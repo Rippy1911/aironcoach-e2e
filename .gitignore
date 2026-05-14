@@ -1,0 +1,17 @@
+node_modules/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+.env
+.env.local
+.env.*.local
+
+e2e/.auth/*.json
+
+# Promo capture output is regenerated per run; commit ad-hoc, not by default.
+promo-assets/
+
+*.log
+.DS_Store
