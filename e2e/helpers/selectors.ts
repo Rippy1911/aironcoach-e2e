@@ -31,6 +31,10 @@ export const routes = {
   trainees: '/Trainees',
   appDev: '/AppDev',
   admin: '/Admin',
+  nutrition: '/Nutrition',
+  mealPlanner: '/MealPlanner',
+  myFoods: '/MyFoods',
+  shoppingList: '/ShoppingList',
 } as const;
 
 export const text = {
