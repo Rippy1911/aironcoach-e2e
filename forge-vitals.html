@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Forge — Vital Signs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface-2: #1a2234;
+      --border: rgba(99, 102, 241, 0.15);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #2dd4bf;
+      --accent-2: #6366f1;
+      --glow: rgba(45, 212, 191, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99, 102, 241, 0.18), transparent), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(45, 212, 191, 0.1), transparent); pointer-events: none; z-index: 0; }
+    .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeUp 0.7s ease-out both; }
+    .delay-1 { animation-delay: 0.1s; } .delay-2 { animation-delay: 0.2s; } .delay-3 { animation-delay: 0.3s; } .delay-4 { animation-delay: 0.4s; } .delay-5 { animation-delay: 0.5s; } .delay-6 { animation-delay: 0.6s; }
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    header .subtitle { color: var(--muted); font-size: 1rem; margin-top: 0.5rem; font-weight: 400; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem 1rem; text-align: center; transition: border-color 0.3s, box-shadow 0.3s; }
+    .stat-card:hover { border-color: rgba(45, 212, 191, 0.35); box-shadow: 0 0 24px var(--glow); }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent); line-height: 1.2; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.35rem; }
+    section { margin-bottom: 3rem; }
+    section h2 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    section h2::before { content: ''; width: 3px; height: 1.1em; background: linear-gradient(180deg, var(--accent), var(--accent-2)); border-radius: 2px; }
+    .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; overflow-x: auto; }
+    .diagram-wrap .mermaid { display: flex; justify-content: center; }
+    .timeline { list-style: none; position: relative; padding-left: 1.5rem; }
+    .timeline::before { content: ''; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 2px; background: linear-gradient(180deg, var(--accent-2), var(--accent)); border-radius: 1px; }
+    .timeline li { position: relative; padding: 0.6rem 0 0.6rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .timeline li:last-child { border-bottom: none; }
+    .timeline li::before { content: ''; position: absolute; left: -1.65rem; top: 1rem; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--glow); }
+    .timeline .date { font-size: 0.75rem; color: var(--accent-2); font-weight: 500; }
+    .timeline .event { font-size: 0.9rem; color: var(--text); }
+    .fleet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .fleet-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; transition: transform 0.25s, border-color 0.25s; }
+    .fleet-card:hover { transform: translateY(-2px); border-color: rgba(99, 102, 241, 0.4); }
+    .fleet-card h3 { font-size: 0.95rem; font-weight: 600; color: var(--accent); margin-bottom: 0.4rem; }
+    .fleet-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    footer { text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); }
+    @media (max-width: 600px) { .container { padding: 1.5rem 1rem 3rem; } .stat-value { font-size: 1.6rem; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="animate">
+      <h1>The Forge — Vital Signs</h1>
+      <p class="subtitle">Monday, June 8, 2026 · IdeaForge Command Center</p>
+    </header>
+
+    <div class="stats-grid">
+      <div class="stat-card animate delay-1"><div class="stat-value">139</div><div class="stat-label">Commits (6 wks)</div></div>
+      <div class="stat-card animate delay-2"><div class="stat-value">325</div><div class="stat-label">Files Touched</div></div>
+      <div class="stat-card animate delay-3"><div class="stat-value">100</div><div class="stat-label">Backend Functions</div></div>
+      <div class="stat-card animate delay-4"><div class="stat-value">34</div><div class="stat-label">Entities</div></div>
+      <div class="stat-card animate delay-5"><div class="stat-value">32</div><div class="stat-label">Pages</div></div>
+      <div class="stat-card animate delay-6"><div class="stat-value">10</div><div class="stat-label">CC Milestones</div></div>
+    </div>
+
+    <section class="animate delay-3">
+      <h2>Architecture</h2>
+      <div class="diagram-wrap">
+        <pre class="mermaid">
+graph TD
+    SB[Sebastian] --> IF[IdeaForge React UI]
+    IF --> CC[Command Center]
+    CC --> LP[Left Pane Tabs]
+    CC --> CHAT[AgentChatPanel]
+    CC --> WB[API Workbench]
+    CHAT --> AGENTS[Agent Registry]
+    AGENTS --> COPILOT[business_copilot]
+    AGENTS --> DEV[dev_assistant]
+    AGENTS --> SIDE[ideaforge_sidekick]
+    AGENTS --> AIRON[airon_manager]
+    COPILOT --> DISPATCH[copilotDispatch]
+    DISPATCH --> GH[GitHub / Cloudflare / Deno]
+    DISPATCH --> MCP[MCP Servers]
+    DISPATCH --> BRIDGE[Product Bridges]
+    DISPATCH --> BROWSER[Steel Browser CDP]
+    DISPATCH --> NKL_WRITE[NKL Functions]
+    IF --> B44[Base44 Entities + Functions]
+    B44 --> ENT[Idea / Task / Project / Note / Doc]
+    B44 --> TEL[AIActionLog / ToolCallLog]
+    DISPATCH --> QUEUE[ns-task-queue]
+    QUEUE --> NSPI[ns-pi Pi CLI]
+    QUEUE --> NSCODER[ns-coder OpenHands]
+    QUEUE --> CURSOR[Cursor Composer-2.5]
+    NKL_WRITE --> NEON[Neon NKL DB]
+    BROWSER --> STEEL[Steel on Hetzner]
+        </pre>
+      </div>
+    </section>
+
+    <section class="animate delay-4">
+      <h2>Recent wins</h2>
+      <ul class="timeline">
+        <li><span class="date">2026-06-08</span><div class="event">Cursor Composer-2.5 wired into the worker fleet — first PR shipped same day</div></li>
+        <li><span class="date">2026-06-08</span><div class="event">Autonomous Airon UI tour via Steel CDP — 5-day workout plan committed by Copilot</div></li>
+        <li><span class="date">2026-06-08</span><div class="event">Coolify v4.1.2 live on ns-main-fsn1 — self-hosted PaaS for IdeaForge ecosystem</div></li>
+        <li><span class="date">2026-06-08</span><div class="event">ns-pi worker v0.1.0 — first PR in 24s, 2.4x faster than ns-coder</div></li>
+        <li><span class="date">2026-06-08</span><div class="event">Firecrawl self-hosted at crawler.nextsolutions.studio — replaces $16-333/mo SaaS</div></li>
+        <li><span class="date">2026-06-07</span><div class="event">copilotDispatch unified router — 60 tools collapsed to 31, 38 actions</div></li>
+        <li><span class="date">2026-06-07</span><div class="event">Command Center v4.1 — 6-tab left pane, @-mention popover, Steel browser tab</div></li>
+        <li><span class="date">2026-06-07</span><div class="event">ns-exec proxy live — HTTPS bash access to ns-main-fsn1 from chat</div></li>
+        <li><span class="date">2026-06-05</span><div class="event">ns-coder v4.4.2 — first PRs shipped on aironcoach (Haiku + DeepSeek tiers)</div></li>
+        <li><span class="date">2026-06-02</span><div class="event">Hetzner CPX52 — upgraded from CPX42, hosts coder/pi/coolify/steel/firecrawl</div></li>
+        <li><span class="date">2026-05-31</span><div class="event">ns-task-queue v1 live on Deno Deploy — async worker dispatch</div></li>
+        <li><span class="date">2026-05-29</span><div class="event">Steel browser self-hosted on ns-main — free unlimited browser automation</div></li>
+      </ul>
+    </section>
+
+    <section class="animate delay-5">
+      <h2>Meet the fleet</h2>
+      <div class="fleet-grid">
+        <div class="fleet-card"><h3>ns-pi</h3><p>Pi CLI on Hetzner + Haiku 4.5. Fastest, cheapest. Lint sweeps and one-line fixes. 24s end-to-end.</p></div>
+        <div class="fleet-card"><h3>ns-coder</h3><p>OpenHands on Hetzner + DeepSeek V4 Flash. Bug fixes and single-PR features. 60-80s wall time.</p></div>
+        <div class="fleet-card"><h3>Cursor Composer-2.5</h3><p>Cloud VM, full Linux, can run tests. Multi-file features, refactors, narrative content. The heavy artillery.</p></div>
+        <div class="fleet-card"><h3>IdeaForge Copilot</h3><p>Claude Sonnet 4.5 in the IdeaForge chat. Orchestrator + reviewer. Dispatches to the fleet, never codes by hand.</p></div>
+      </div>
+    </section>
+
+    <footer>Generated by Cursor Composer-2.5 — first commission from IdeaForge Copilot — 2026-06-08</footer>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1a2234',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#6366f1',
+        lineColor: '#2dd4bf',
+        secondaryColor: '#111827',
+        tertiaryColor: '#0a0e17',
+        fontFamily: 'Inter, sans-serif'
+      },
+      flowchart: { curve: 'basis', padding: 20 }
+    });
+  </script>
+</body>
+</html>
