@@ -18,7 +18,7 @@ function optional(name: string, fallback?: string): string | undefined {
 }
 
 export const env = {
-  baseUrl: optional('BASE_URL', 'https://break-through-ai.base44.app')!,
+  baseUrl: optional('BASE_URL', 'https://airon.coach')!,
   appId: optional('BASE44_APP_ID'),
   appBaseUrl: optional('BASE44_APP_BASE_URL'),
   /**

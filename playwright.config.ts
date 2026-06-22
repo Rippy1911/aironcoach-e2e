@@ -4,7 +4,7 @@ import * as path from 'node:path';
 
 loadEnv({ path: path.resolve(__dirname, '.env') });
 
-const BASE_URL = process.env.BASE_URL ?? 'https://break-through-ai.base44.app';
+const BASE_URL = process.env.BASE_URL ?? 'https://airon.coach';
 const HEADED = process.env.HEADED === '1';
 const isCI = !!process.env.CI;
 const PROMO = process.env.PROMO_CAPTURE === '1';
@@ -19,6 +19,7 @@ const storageStateFor = (slot: 'free' | 'pro' | 'admin' | 'fresh') =>
 const PROMO_OUTPUT_DIR = path.resolve(__dirname, 'promo-assets');
 
 export default defineConfig({
+  globalSetup: path.resolve(__dirname, 'e2e/global-setup.ts'),
   testDir: './e2e/tests',
   outputDir: PROMO ? path.join(PROMO_OUTPUT_DIR, 'raw') : './test-results',
   timeout: 90_000,
@@ -54,7 +55,7 @@ export default defineConfig({
       // Same storage state + DB user: parallel specs wipe each other's ActivityLog / workouts.
       workers: 1,
       testMatch:
-        /(01-pro-full-journey|smoke-pro-routing|workout-logging|planned-workout-completion|ai-coach-chat-pro)\.spec\.ts/,
+        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|workout-logging|planned-workout-completion|ai-coach-chat-pro)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: storageStateFor('pro'),
