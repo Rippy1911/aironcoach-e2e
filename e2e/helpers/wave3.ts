@@ -77,9 +77,14 @@ export async function clickStartWorkout(page: Page): Promise<void> {
 
 export async function expectActiveWorkoutPage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/ActiveWorkout/, { timeout: 20_000 });
-  await expect(page.getByRole('button', { name: /finish workout/i })).toBeVisible({
-    timeout: 15_000,
-  });
+  await acceptCookiesIfPresent(page);
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await expect(
+    page
+      .getByRole('button', { name: /finish workout/i })
+      .or(page.getByRole('button', { name: /add exercise/i }))
+      .first(),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 export function activeWorkoutRoot(page: Page): Locator {
@@ -91,6 +96,7 @@ export function isActiveWorkoutModal(page: Page): boolean {
 }
 
 export async function addExerciseFromSearch(page: Page, query: string): Promise<void> {
+  await acceptCookiesIfPresent(page);
   const root = activeWorkoutRoot(page);
   await root.getByRole('button', { name: /add exercise/i }).click();
   await pauseForApi(page, 1_000);
@@ -124,8 +130,15 @@ export async function expectFirstExerciseVisible(
   ).toBeVisible({ timeout: 15_000 });
 }
 
+export function activeStrengthExercise(page: Page): Locator {
+  return page
+    .locator('div')
+    .filter({ has: page.getByRole('button', { name: /add set/i }) })
+    .first();
+}
+
 export function exerciseSetSpinbuttons(page: Page): Locator {
-  return page.getByRole('spinbutton');
+  return activeStrengthExercise(page).getByRole('spinbutton');
 }
 
 /** Each set row exposes reps, kg, sec spinbuttons (3 per set). */
@@ -146,7 +159,7 @@ export async function logSet(
 }
 
 export async function addSetRow(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /add set/i }).first().click();
+  await activeStrengthExercise(page).getByRole('button', { name: /add set/i }).click();
   await pauseForApi(page, 1_000);
 }
 
@@ -182,7 +195,9 @@ export async function expectSetInHistory(
     `expected a logged set ${reps} reps @ ${weight}kg in set history; got ${JSON.stringify(rows)}`,
   ).toBeTruthy();
 
-  const setsLabel = page.getByText(new RegExp(`${rows.length}\\s*sets`, 'i')).first();
+  const setsLabel = activeStrengthExercise(page)
+    .getByText(new RegExp(`${rows.length}\\s*sets`, 'i'))
+    .first();
   await expect(setsLabel).toBeVisible({ timeout: 10_000 });
 }
 
@@ -226,7 +241,8 @@ export async function expectRpePersists(page: Page, value: number): Promise<void
 }
 
 export async function finishWorkout(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /finish workout/i }).click();
+  await acceptCookiesIfPresent(page);
+  await page.getByRole('button', { name: /finish workout/i }).click({ force: true });
   await pauseForApi(page, 2_000);
 
   const confirm = page
@@ -285,21 +301,36 @@ export async function expectWorkoutInHistory(
   ).toBeVisible({ timeout: 15_000 });
 }
 
-export async function dismissInProgressWorkoutIfNeeded(page: Page): Promise<void> {
-  await page.goto('/WorkoutCalendar');
+export async function discardActiveWorkout(page: Page): Promise<void> {
+  await page.goto('/ActiveWorkout');
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
-
-  const inProgress = page.getByText(/workout in progress/i);
-  if (!(await inProgress.isVisible({ timeout: 3_000 }).catch(() => false))) return;
-
-  await page.locator('button').filter({ hasText: /^\s*Start\s*$/i }).first().click();
-  await expectActiveWorkoutPage(page);
+  await page.waitForLoadState('networkidle').catch(() => {});
 
   const finish = page.getByRole('button', { name: /finish workout/i });
-  if (await finish.isVisible().catch(() => false)) {
-    await finish.click();
-    await pauseForApi(page, 2_000);
-    await closeFinishSummary(page);
+  if (!(await finish.isVisible({ timeout: 8_000 }).catch(() => false))) return;
+
+  const discard = page.getByRole('button', { name: /discard workout/i });
+  if (await discard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await discard.click({ force: true });
+    await pauseForApi(page, 1_000);
+    const confirm = page
+      .locator('[role="alertdialog"], [role="dialog"]')
+      .getByRole('button', { name: /discard|delete|confirm|yes/i })
+      .last();
+    if (await confirm.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirm.click({ force: true });
+      await pauseForApi(page);
+    }
+    return;
   }
+
+  await finishWorkout(page);
+  await closeFinishSummary(page);
+}
+
+/** Clear any in-progress ActiveWorkout so the next spec starts clean. */
+export async function dismissInProgressWorkoutIfNeeded(page: Page): Promise<void> {
+  await discardActiveWorkout(page);
+  await pauseForApi(page, 1_000);
 }

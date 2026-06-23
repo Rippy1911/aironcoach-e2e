@@ -19,6 +19,7 @@ import {
 import { pauseForApi } from '../helpers/wave2';
 import { routes } from '../helpers/selectors';
 import { expectAuthBootstrapped } from '../helpers/assertions';
+import { acceptCookiesIfPresent } from '../helpers/wave1';
 
 test.describe('wave3-workout-history', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,6 +35,7 @@ test.describe('wave3-workout-history', () => {
     try {
       await page.goto(routes.training);
       await expectAuthBootstrapped(page);
+      await acceptCookiesIfPresent(page);
       await pauseForApi(page);
 
       await clickStartWorkout(page);

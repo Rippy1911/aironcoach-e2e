@@ -18,6 +18,7 @@ import {
 import { pauseForApi } from '../helpers/wave2';
 import { routes } from '../helpers/selectors';
 import { expectAuthBootstrapped } from '../helpers/assertions';
+import { acceptCookiesIfPresent } from '../helpers/wave1';
 
 test.describe('wave3-log-set', () => {
   test.beforeEach(async ({ page }) => {
@@ -32,11 +33,12 @@ test.describe('wave3-log-set', () => {
     try {
       await page.goto(routes.training);
       await expectAuthBootstrapped(page);
+      await acceptCookiesIfPresent(page);
       await pauseForApi(page);
 
       await clickStartWorkout(page);
-      await addExerciseFromSearch(page, 'row');
-      await expectFirstExerciseVisible(page, /row/i);
+      await addExerciseFromSearch(page, 'pulldown');
+      await expectFirstExerciseVisible(page, /pulldown/i);
 
       await logSet(page, 0, 10, 50);
       await expectSetInHistory(page, 10, 50);
