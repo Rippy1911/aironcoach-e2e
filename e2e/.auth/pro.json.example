@@ -1,0 +1,29 @@
+{
+  "cookies": [
+    {
+      "name": "REDACTED_SESSION_COOKIE",
+      "value": "REDACTED",
+      "domain": "airon.coach",
+      "path": "/",
+      "expires": 1780000000,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://airon.coach",
+      "localStorage": [
+        {
+          "name": "base44_access_token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.REDACTED_PAYLOAD.REDACTED_SIGNATURE"
+        },
+        {
+          "name": "base44_app_id",
+          "value": "REDACTED_APP_ID"
+        }
+      ]
+    }
+  ]
+}

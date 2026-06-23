@@ -1,12 +1,12 @@
 /**
  * Optional: capture storage state using Base44 email + password (no Google OAuth).
  *
- * Requires env (never commit passwords — pass inline only):
- *   E2E_LOGIN_EMAIL    same as TEST_<SLOT>_EMAIL usually
- *   E2E_LOGIN_PASSWORD from your terminal session only
+ * Credentials (never commit passwords):
+ *   USER_NAME + USER_PASS     — Cursor sandbox env (Wave 1 pro slot)
+ *   E2E_LOGIN_EMAIL + E2E_LOGIN_PASSWORD — explicit override
  *
  *   cd aironcoach-e2e
- *   E2E_LOGIN_EMAIL=xrivosx@gmail.com E2E_LOGIN_PASSWORD='…' npx tsx e2e/password-login-setup.ts --slot=pro
+ *   npm run e2e:auth-password -- --slot=pro
  *
  * If the hosted login page is Google-only or blocks automation, use interactive
  *   npm run e2e:auth-setup -- --slot=pro
@@ -33,13 +33,18 @@ function parseArgs(): { slot: Slot } {
 
 async function main() {
   const { slot } = parseArgs();
-  const email = process.env.E2E_LOGIN_EMAIL?.trim();
-  const password = process.env.E2E_LOGIN_PASSWORD;
-  const baseUrl = (process.env.BASE_URL ?? 'https://break-through-ai.base44.app').replace(/\/$/, '');
+  const email = (
+    process.env.E2E_LOGIN_EMAIL ??
+    process.env.USER_NAME ??
+    ''
+  ).trim();
+  const password = process.env.E2E_LOGIN_PASSWORD ?? process.env.USER_PASS ?? '';
+  const baseUrl = (process.env.BASE_URL ?? 'https://airon.coach').replace(/\/$/, '');
+  const channel = process.env.PLAYWRIGHT_CHANNEL;
 
   if (!email || !password) {
     console.error(
-      'Set E2E_LOGIN_EMAIL and E2E_LOGIN_PASSWORD in the environment (do not put the password in .env files that might be committed).',
+      'Set USER_NAME + USER_PASS (or E2E_LOGIN_EMAIL + E2E_LOGIN_PASSWORD) in the environment.',
     );
     process.exit(1);
   }
@@ -53,30 +58,38 @@ async function main() {
   console.log(`  Base URL:    ${baseUrl}`);
   console.log(`  Output:      ${target}\n`);
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({
+    headless: process.env.HEADED !== '1',
+    ...(channel ? { channel } : {}),
+  });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
 
-  await page.goto(`${baseUrl}/Landing`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  // Direct email/password login page
+  await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-  // Landing uses buttons that call redirectToLogin — click primary login entry
-  const loginBtn = page.getByRole('button', { name: /login|zaloguj/i }).first();
-  await loginBtn.click({ timeout: 15_000 });
+  const acceptCookies = page.getByRole('button', { name: /^Accept$/i });
+  if (await acceptCookies.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await acceptCookies.click();
+  }
 
-  await page.waitForURL(/base44|login|auth|sign/i, { timeout: 45_000 }).catch(() => {});
-
-  // Hosted page may show provider picker — prefer email/password if visible
-  const emailInput = page.locator('input[type="email"], input[name="email"], input[autocomplete="username"]').first();
+  const emailInput = page
+    .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
+    .first();
   const passInput = page.locator('input[type="password"], input[name="password"]').first();
 
   await emailInput.waitFor({ state: 'visible', timeout: 30_000 });
   await emailInput.fill(email);
   await passInput.fill(password);
 
-  const submit = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in"), button:has-text("Zaloguj")').first();
-  await submit.click();
+  // EXACT match — do NOT use /sign in/i (also matches "Continue with Google")
+  await Promise.all([
+    page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 90_000 }).catch(() => {}),
+    page.getByRole('button', { name: /^Sign in$/ }).click(),
+  ]);
 
-  // Redirect lands on app origin with token in localStorage
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+
   await page
     .waitForFunction(
       () => !!window.localStorage.getItem('base44_access_token'),
@@ -85,15 +98,23 @@ async function main() {
     )
     .catch(() => {});
 
-  let token = await page.evaluate(() => localStorage.getItem('base44_access_token'));
+  let token: string | null = null;
+  for (let attempt = 0; attempt < 5 && !token; attempt++) {
+    try {
+      token = await page.evaluate(() => localStorage.getItem('base44_access_token'));
+    } catch {
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      await page.waitForTimeout(1_000);
+    }
+  }
   if (!token) {
-    console.warn('⚠ No token yet — navigating to app Dashboard…');
-    await page.goto(`${baseUrl}/Dashboard`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    console.warn('⚠ No token yet — navigating to /Home…');
+    await page.goto(`${baseUrl}/Home`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     token = await page.evaluate(() => localStorage.getItem('base44_access_token'));
   }
   if (!token) {
     throw new Error(
-      'Login did not produce base44_access_token. The hosted page may be Google-only — use npm run e2e:auth-setup instead.',
+      'Login did not produce base44_access_token. Try npm run e2e:auth-setup for interactive OAuth.',
     );
   }
 

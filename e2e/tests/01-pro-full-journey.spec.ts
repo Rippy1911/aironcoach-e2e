@@ -85,7 +85,7 @@ test.describe('§ pro full journey', () => {
       )
       .not.toBeNull();
 
-    const workouts = await api.filter<{ id: string }>('Workout', { created_by: slotEmail }, {
+    const workouts = await api.filter<{ id: string; notes?: string }>('Workout', { created_by: slotEmail }, {
       sort: '-created_date',
       limit: 12,
     });

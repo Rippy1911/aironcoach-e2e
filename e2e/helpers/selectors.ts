@@ -17,10 +17,13 @@
 
 export const routes = {
   landing: '/Landing',
+  home: '/Home',
   dashboard: '/Dashboard',
   onboarding: '/Onboarding',
   chat: '/Chat',
   settings: '/Settings',
+  subscription: '/Subscription',
+  library: '/Library',
   workoutCalendar: '/WorkoutCalendar',
   logWorkout: '/LogWorkout',
   workoutDetails: '/WorkoutDetails',
@@ -32,10 +35,27 @@ export const routes = {
   appDev: '/AppDev',
   admin: '/Admin',
   nutrition: '/Nutrition',
+  training: '/Training',
+  coachDirectory: '/CoachDirectory',
   mealPlanner: '/MealPlanner',
   myFoods: '/MyFoods',
   shoppingList: '/ShoppingList',
+  pricing: '/pricing',
+  login: '/login',
 } as const;
+
+/** Pro-routing smoke matrix — direct URL navigation targets for Wave 1. */
+export const proSmokeRoutes = [
+  { path: '/Home', label: 'Home' },
+  { path: '/Training', label: 'Training' },
+  { path: '/Nutrition', label: 'Nutrition' },
+  { path: '/CoachDirectory', label: 'CoachDirectory' },
+  { path: '/Reports', label: 'Reports' },
+  { path: '/Library', label: 'Library' },
+  { path: '/Settings', label: 'Settings' },
+  { path: '/Subscription', label: 'Subscription' },
+  { path: '/Dashboard', label: 'Dashboard' },
+] as const;
 
 export const text = {
   landing: {
@@ -43,6 +63,16 @@ export const text = {
     loginCta: /log in|^login$|zaloguj|sign in/i,
     // Hero + nav CTA: t('hero_cta') — EN "Start Free", PL "Zacznij za darmo"
     startFreeCta: /start free|get started|zacznij|start free trial/i,
+    getStartedCta: /get started|start free/i,
+    pricingNav: /^Pricing$/i,
+    cookieBanner: /cookies for auth|we use cookies/i,
+    cookieAccept: /^Accept$/i,
+    cookieDecline: /^Decline$/i,
+  },
+  pricing: {
+    freeTier: /^Free$/i,
+    proTier: /^PRO$/i,
+    coachTier: /^ELITE$/i,
   },
   settings: {
     freePlanBadge: /free plan/i,
