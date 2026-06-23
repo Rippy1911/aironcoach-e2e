@@ -30,7 +30,7 @@ test.describe('wave3-workout-history', () => {
   test('finished workout appears in calendar list view for today', async ({ page }) => {
     const guards = attachPageGuards(page);
     const artifacts: Array<{ label: string; localPath: string; tags: string[] }> = [];
-    const exerciseQuery = 'shrug';
+    const exerciseQuery = 'lateral raise';
 
     try {
       await startWorkoutFromTraining(page);

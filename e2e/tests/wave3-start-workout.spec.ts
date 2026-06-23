@@ -4,6 +4,7 @@
 import { test, expect } from '../fixtures/test';
 import { attachPageGuards } from '../helpers/pageGuards';
 import {
+  ensureProSession,
   openWorkouts,
   hasWorkoutTemplates,
   pickVisibleTemplateName,
@@ -33,6 +34,7 @@ test.describe('wave3-start-workout', () => {
     const artifacts: Array<{ label: string; localPath: string; tags: string[] }> = [];
 
     try {
+      await ensureProSession(page);
       await openWorkouts(page);
 
       const hasTemplates = await hasWorkoutTemplates(page);

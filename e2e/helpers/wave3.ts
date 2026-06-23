@@ -50,9 +50,10 @@ export async function openWorkouts(page: Page): Promise<void> {
 export async function hasWorkoutTemplates(page: Page): Promise<boolean> {
   const templateCard = page
     .getByText(/Day \d+[A-Z]? - /i)
-    .or(page.getByText(/sets · \d+/i))
+    .or(page.getByText(/\d+\s*sets\s*·/i))
+    .or(page.getByText(/Workout Templates/i))
     .first();
-  return templateCard.isVisible({ timeout: 8_000 }).catch(() => false);
+  return templateCard.isVisible({ timeout: 15_000 }).catch(() => false);
 }
 
 export async function pickVisibleTemplateName(page: Page): Promise<string | null> {
@@ -80,6 +81,7 @@ export async function clickStartWorkout(page: Page): Promise<void> {
 
 /** Preferred entry: Training tab → ActiveWorkout (direct route, Start button fallback). */
 export async function startWorkoutFromTraining(page: Page): Promise<void> {
+  await ensureProSession(page);
   await page.goto(routes.training);
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);

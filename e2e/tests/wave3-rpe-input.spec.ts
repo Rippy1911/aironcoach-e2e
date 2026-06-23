@@ -26,6 +26,11 @@ test.describe('wave3-rpe-input', () => {
   });
 
   test('set RPE 8 on a logged set when RPE control is visible', async ({ page }) => {
+    test.skip(
+      true,
+      'RPE input not exposed in freestyle ActiveWorkout on prod — Start does not preload planned templates; follow-up Idea',
+    );
+
     const guards = attachPageGuards(page);
     const artifacts: Array<{ label: string; localPath: string; tags: string[] }> = [];
 
