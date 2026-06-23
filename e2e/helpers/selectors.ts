@@ -25,6 +25,9 @@ export const routes = {
   subscription: '/Subscription',
   library: '/Library',
   workoutCalendar: '/WorkoutCalendar',
+  /** Alias — prod redirects /Workouts → /WorkoutCalendar. */
+  workouts: '/Workouts',
+  activeWorkout: '/ActiveWorkout',
   logWorkout: '/LogWorkout',
   workoutDetails: '/WorkoutDetails',
   reports: '/Reports',
