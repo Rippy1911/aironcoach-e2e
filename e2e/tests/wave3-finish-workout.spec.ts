@@ -1,10 +1,10 @@
 /**
  * Wave 3 — Finish workout: complete sets → Finish → summary shows volume / sets / duration.
  */
-import { test, expect } from '../fixtures/test';
+import { test } from '../fixtures/test';
 import { attachPageGuards } from '../helpers/pageGuards';
 import {
-  clickStartWorkout,
+  startWorkoutFromTraining,
   addExerciseFromSearch,
   logSet,
   finishWorkout,
@@ -15,9 +15,6 @@ import {
   dismissInProgressWorkoutIfNeeded,
 } from '../helpers/wave3';
 import { pauseForApi } from '../helpers/wave2';
-import { routes } from '../helpers/selectors';
-import { expectAuthBootstrapped } from '../helpers/assertions';
-import { acceptCookiesIfPresent } from '../helpers/wave1';
 
 const FINISH_MARKER = 'Wave3 Finish';
 
@@ -32,12 +29,7 @@ test.describe('wave3-finish-workout', () => {
     const artifacts: Array<{ label: string; localPath: string; tags: string[] }> = [];
 
     try {
-      await page.goto(routes.training);
-      await expectAuthBootstrapped(page);
-      await acceptCookiesIfPresent(page);
-      await pauseForApi(page);
-
-      await clickStartWorkout(page);
+      await startWorkoutFromTraining(page);
 
       const nameInput = page.getByPlaceholder(/workout name/i);
       if (await nameInput.isVisible({ timeout: 2_000 }).catch(() => false)) {

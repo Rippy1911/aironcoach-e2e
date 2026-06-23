@@ -5,6 +5,7 @@ import { expectAuthBootstrapped } from './assertions';
 import { uploadArtifacts, type ArtifactRecord } from './fcvUpload';
 import { acceptCookiesIfPresent } from './wave1';
 import { pauseForApi, WAVE2_PACE_MS } from './wave2';
+import { routes } from './selectors';
 
 /** Same Base44 rate-limit pacing as Wave 2. */
 export const WAVE3_PACE_MS = WAVE2_PACE_MS;
@@ -62,29 +63,53 @@ export async function pickVisibleTemplateName(page: Page): Promise<string | null
   return match?.[0]?.trim() ?? text.split('\n')[0]?.trim() ?? null;
 }
 
+export async function ensureProSession(page: Page): Promise<void> {
+  await page.goto(routes.home);
+  await expectAuthBootstrapped(page);
+  await acceptCookiesIfPresent(page);
+  await pauseForApi(page, 1_000);
+}
+
 export async function clickStartWorkout(page: Page): Promise<void> {
-  const start = page
-    .locator('button')
-    .filter({ hasText: /^\s*Start\s*$/i })
-    .first();
-  await expect(start, 'Start button should be visible on workouts calendar').toBeVisible({
-    timeout: 15_000,
-  });
+  const start = page.getByRole('button', { name: /^Start$/i }).first();
+  await expect(start, 'Start button should be visible').toBeVisible({ timeout: 15_000 });
   await start.click();
   await pauseForApi(page);
   await expectActiveWorkoutPage(page);
 }
 
+/** Preferred entry: Training tab → Start → ActiveWorkout. */
+export async function startWorkoutFromTraining(page: Page): Promise<void> {
+  await page.goto(routes.training);
+  await expectAuthBootstrapped(page);
+  await acceptCookiesIfPresent(page);
+  await pauseForApi(page);
+  await clickStartWorkout(page);
+}
+
 export async function expectActiveWorkoutPage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/ActiveWorkout/, { timeout: 20_000 });
+  await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
-  await page.waitForLoadState('networkidle').catch(() => {});
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const ready = page
+      .getByRole('button', { name: /finish workout/i })
+      .or(page.getByRole('button', { name: /add exercise/i }))
+      .first();
+    if (await ready.isVisible({ timeout: 12_000 }).catch(() => false)) return;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expectAuthBootstrapped(page);
+    await acceptCookiesIfPresent(page);
+    await pauseForApi(page);
+  }
+
   await expect(
     page
       .getByRole('button', { name: /finish workout/i })
       .or(page.getByRole('button', { name: /add exercise/i }))
       .first(),
-  ).toBeVisible({ timeout: 30_000 });
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 export function activeWorkoutRoot(page: Page): Locator {
@@ -302,16 +327,18 @@ export async function expectWorkoutInHistory(
 }
 
 export async function discardActiveWorkout(page: Page): Promise<void> {
-  await page.goto('/ActiveWorkout');
+  await page.goto(routes.workoutCalendar);
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await pauseForApi(page, 1_000);
 
-  const finish = page.getByRole('button', { name: /finish workout/i });
-  if (!(await finish.isVisible({ timeout: 8_000 }).catch(() => false))) return;
+  const inProgress = page.getByText(/workout in progress/i);
+  if (!(await inProgress.isVisible({ timeout: 4_000 }).catch(() => false))) return;
+
+  await clickStartWorkout(page);
 
   const discard = page.getByRole('button', { name: /discard workout/i });
-  if (await discard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+  if (await discard.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await discard.click({ force: true });
     await pauseForApi(page, 1_000);
     const confirm = page
@@ -331,6 +358,6 @@ export async function discardActiveWorkout(page: Page): Promise<void> {
 
 /** Clear any in-progress ActiveWorkout so the next spec starts clean. */
 export async function dismissInProgressWorkoutIfNeeded(page: Page): Promise<void> {
+  await ensureProSession(page);
   await discardActiveWorkout(page);
-  await pauseForApi(page, 1_000);
 }

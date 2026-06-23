@@ -4,7 +4,7 @@
 import { test, expect } from '../fixtures/test';
 import { attachPageGuards } from '../helpers/pageGuards';
 import {
-  clickStartWorkout,
+  startWorkoutFromTraining,
   addExerciseFromSearch,
   logSet,
   rpeInput,
@@ -15,9 +15,6 @@ import {
   dismissInProgressWorkoutIfNeeded,
 } from '../helpers/wave3';
 import { pauseForApi } from '../helpers/wave2';
-import { routes } from '../helpers/selectors';
-import { expectAuthBootstrapped } from '../helpers/assertions';
-import { acceptCookiesIfPresent } from '../helpers/wave1';
 
 test.describe('wave3-rpe-input', () => {
   test.beforeEach(async ({ page }) => {
@@ -30,12 +27,7 @@ test.describe('wave3-rpe-input', () => {
     const artifacts: Array<{ label: string; localPath: string; tags: string[] }> = [];
 
     try {
-      await page.goto(routes.training);
-      await expectAuthBootstrapped(page);
-      await acceptCookiesIfPresent(page);
-      await pauseForApi(page);
-
-      await clickStartWorkout(page);
+      await startWorkoutFromTraining(page);
       await addExerciseFromSearch(page, 'curl');
       await logSet(page, 0, 12, 25);
       await pauseForApi(page);
