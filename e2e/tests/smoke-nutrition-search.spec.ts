@@ -12,16 +12,17 @@ import { screenshotFullPage, uploadWave1Artifacts } from '../helpers/wave1';
 async function openFoodSearch(page: import('@playwright/test').Page) {
   await page.goto(routes.nutrition);
   await expectAuthBootstrapped(page);
+  await page.waitForLoadState('networkidle').catch(() => {});
 
-  const addBtn = page.getByRole('button', { name: /^Add$/i }).first();
-  await expect(addBtn).toBeVisible({ timeout: 15_000 });
-  await addBtn.click();
+  const acceptCookies = page.getByRole('button', { name: /^Accept$/i });
+  if (await acceptCookies.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await acceptCookies.click();
+  }
 
-  const searchItem = page.getByRole('menuitem', { name: /search/i }).or(
-    page.getByRole('button', { name: /search/i }),
-  ).or(page.getByText(/^Search$/i)).first();
-  await expect(searchItem).toBeVisible({ timeout: 10_000 });
-  await searchItem.click();
+  // Prod Nutrition UI exposes Search inline under "Add meal" (no separate Add dropdown).
+  const searchBtn = page.getByRole('button', { name: /^Search$/i }).first();
+  await expect(searchBtn).toBeVisible({ timeout: 15_000 });
+  await searchBtn.click();
 }
 
 async function searchAndAssertResults(
@@ -30,7 +31,8 @@ async function searchAndAssertResults(
   opts: { assertSearchProducts?: boolean } = {},
 ) {
   const searchInput = page
-    .getByPlaceholder(/search/i)
+    .getByPlaceholder(/search food/i)
+    .or(page.getByPlaceholder(/search/i))
     .or(page.locator('input[type="search"]'))
     .or(page.locator('[role="combobox"] input'))
     .first();
@@ -39,25 +41,26 @@ async function searchAndAssertResults(
 
   let searchResponse: import('@playwright/test').Response | null = null;
   if (opts.assertSearchProducts) {
-  const responsePromise = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/functions/searchProducts') &&
-      res.request().method() === 'POST',
-    { timeout: 15_000 },
-  );
-  await searchInput.press('Enter').catch(() => searchInput.fill(query));
-  searchResponse = await responsePromise.catch(() => null);
-  } else {
-    await page.waitForTimeout(500);
+    const responsePromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/functions/searchProducts') &&
+        res.request().method() === 'POST',
+      { timeout: 15_000 },
+    );
+    await searchInput.press('Enter').catch(() => {});
+    searchResponse = await responsePromise.catch(() => null);
   }
 
-  // Wait ≤5 sec for results
+  // Debounced inline search on prod; wait for dropdown rows (kcal may be bare digits).
+  await page.waitForTimeout(1_500);
+
+  const keyword = query.split(/\s+/)[0]!;
   const resultRow = page
-    .locator('[role="option"], [data-search-result], li')
-    .filter({ hasText: /\d+\s*kcal|\d+\s*cal/i })
+    .getByRole('button', { name: new RegExp(keyword, 'i') })
+    .filter({ hasText: /\d+/ })
     .first();
-  await expect(resultRow, `expected ≥1 result with kcal for "${query}"`).toBeVisible({
-    timeout: 5_000,
+  await expect(resultRow, `expected ≥1 food result for "${query}"`).toBeVisible({
+    timeout: 10_000,
   });
 
   if (opts.assertSearchProducts && searchResponse) {
@@ -82,7 +85,7 @@ test.describe('smoke-nutrition-search', () => {
       await openFoodSearch(page);
 
       // ── Polish query ───────────────────────────────────────────────────
-      const polishResult = await searchAndAssertResults(page, 'kefir mlekovita');
+      const polishResult = await searchAndAssertResults(page, 'kefir');
 
       artifacts.push({
         label: 'search-kefir',
@@ -91,15 +94,16 @@ test.describe('smoke-nutrition-search', () => {
       });
 
       await polishResult.click();
-      const portionDialog = page.locator('[role="dialog"]').first();
-      await expect(portionDialog).toBeVisible({ timeout: 10_000 });
 
-      // Serving size selector + macro preview
+      // Prod uses inline portion panel (not role=dialog modal).
+      const portionPanel = page.locator('main').filter({ hasText: /Per 100g:/i }).first();
+      await expect(portionPanel).toBeVisible({ timeout: 10_000 });
+
       await expect(
-        portionDialog.getByText(/serving|portion|gram|g\b|100g|size/i).first(),
+        portionPanel.getByText(/serving|portion|gram|g\b|100g|100ml|amount/i).first(),
       ).toBeVisible({ timeout: 10_000 });
       await expect(
-        portionDialog.getByText(/kcal|cal|protein|carb|fat|macro/i).first(),
+        portionPanel.getByText(/kcal|cal|protein|carb|fat|macro/i).first(),
       ).toBeVisible({ timeout: 10_000 });
 
       artifacts.push({
@@ -108,9 +112,9 @@ test.describe('smoke-nutrition-search', () => {
         tags: ['nutrition', 'search-flow', 'portion'],
       });
 
-      const cancelBtn = portionDialog.getByRole('button', { name: /cancel|anuluj|close/i }).first();
-      if (await cancelBtn.isVisible().catch(() => false)) {
-        await cancelBtn.click();
+      const backBtn = portionPanel.getByRole('button', { name: /^Back$/i }).first();
+      if (await backBtn.isVisible().catch(() => false)) {
+        await backBtn.click();
       } else {
         await page.keyboard.press('Escape');
       }

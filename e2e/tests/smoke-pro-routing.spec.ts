@@ -71,6 +71,8 @@ test.describe('smoke-pro-routing', () => {
           finalPath: new URL(page.url()).pathname,
           notes,
         });
+        // Pace prod API to avoid 429 during multi-route matrix
+        await page.waitForTimeout(2_000);
       }
     }
 

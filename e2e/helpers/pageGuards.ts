@@ -20,6 +20,7 @@ export function attachPageGuards(page: Page) {
       const text = msg.text();
       // Ignore noisy third-party / hydration warnings that aren't app bugs
       if (/favicon|ResizeObserver|chunk load/i.test(text)) return;
+      if (/429|rate limit exceeded/i.test(text)) return;
       consoleErrors.push(text);
     }
   };

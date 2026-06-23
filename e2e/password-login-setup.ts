@@ -83,7 +83,12 @@ async function main() {
   await passInput.fill(password);
 
   // EXACT match — do NOT use /sign in/i (also matches "Continue with Google")
-  await page.getByRole('button', { name: /^Sign in$/ }).click();
+  await Promise.all([
+    page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 90_000 }).catch(() => {}),
+    page.getByRole('button', { name: /^Sign in$/ }).click(),
+  ]);
+
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
 
   await page
     .waitForFunction(
@@ -93,7 +98,15 @@ async function main() {
     )
     .catch(() => {});
 
-  let token = await page.evaluate(() => localStorage.getItem('base44_access_token'));
+  let token: string | null = null;
+  for (let attempt = 0; attempt < 5 && !token; attempt++) {
+    try {
+      token = await page.evaluate(() => localStorage.getItem('base44_access_token'));
+    } catch {
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      await page.waitForTimeout(1_000);
+    }
+  }
   if (!token) {
     console.warn('⚠ No token yet — navigating to /Home…');
     await page.goto(`${baseUrl}/Home`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
