@@ -92,12 +92,14 @@ export async function expectActiveWorkoutPage(page: Page): Promise<void> {
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
 
+  const ready = () =>
+    page
+      .getByRole('button', { name: /add exercise/i })
+      .or(page.getByPlaceholder(/workout name/i))
+      .or(page.getByRole('button', { name: /finish workout/i }));
+
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const ready = page
-      .getByRole('button', { name: /finish workout/i })
-      .or(page.getByRole('button', { name: /add exercise/i }))
-      .first();
-    if (await ready.isVisible({ timeout: 12_000 }).catch(() => false)) return;
+    if (await ready().first().isVisible({ timeout: 12_000 }).catch(() => false)) return;
 
     if (attempt === 2) {
       await page.goto(routes.training);
@@ -114,12 +116,7 @@ export async function expectActiveWorkoutPage(page: Page): Promise<void> {
     await pauseForApi(page);
   }
 
-  await expect(
-    page
-      .getByRole('button', { name: /finish workout/i })
-      .or(page.getByRole('button', { name: /add exercise/i }))
-      .first(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(ready().first()).toBeVisible({ timeout: 10_000 });
 }
 
 export function activeWorkoutRoot(page: Page): Locator {
