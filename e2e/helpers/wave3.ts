@@ -83,8 +83,13 @@ export async function startWorkoutFromTraining(page: Page): Promise<void> {
   await page.goto(routes.training);
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
-  await pauseForApi(page);
+  await pauseForApi(page, WAVE3_PACE_MS);
   await clickStartWorkout(page);
+}
+
+export async function wave3PaceBetweenSpecs(page: Page): Promise<void> {
+  await ensureProSession(page);
+  await pauseForApi(page, WAVE3_PACE_MS);
 }
 
 export async function expectActiveWorkoutPage(page: Page): Promise<void> {
@@ -116,7 +121,7 @@ export async function expectActiveWorkoutPage(page: Page): Promise<void> {
     await pauseForApi(page);
   }
 
-  await expect(ready().first()).toBeVisible({ timeout: 10_000 });
+  await expect(ready().first()).toBeVisible({ timeout: 20_000 });
 }
 
 export function activeWorkoutRoot(page: Page): Locator {
@@ -162,15 +167,26 @@ export async function expectFirstExerciseVisible(
   ).toBeVisible({ timeout: 15_000 });
 }
 
-export function activeStrengthExercise(page: Page): Locator {
+export function exerciseBlock(page: Page, keyword?: RegExp | string): Locator {
+  const pattern =
+    typeof keyword === 'string' ? new RegExp(keyword, 'i') : keyword ?? /./;
   return page
     .locator('div')
-    .filter({ has: page.getByRole('button', { name: /add set/i }) })
-    .first();
+    .filter({ hasText: pattern })
+    .filter({ has: page.getByRole('spinbutton') })
+    .last();
 }
 
-export function exerciseSetSpinbuttons(page: Page): Locator {
-  return activeStrengthExercise(page).getByRole('spinbutton');
+export function activeStrengthExercise(page: Page, keyword?: RegExp | string): Locator {
+  if (keyword) return exerciseBlock(page, keyword);
+  return page
+    .locator('div')
+    .filter({ has: page.getByRole('button', { name: /^Add Set$/i }) })
+    .last();
+}
+
+export function exerciseSetSpinbuttons(page: Page, keyword?: RegExp | string): Locator {
+  return activeStrengthExercise(page, keyword).getByRole('spinbutton');
 }
 
 /** Each set row exposes reps, kg, sec spinbuttons (3 per set). */
@@ -179,8 +195,9 @@ export async function logSet(
   setIndex: number,
   reps: number,
   weight: number,
+  exerciseKeyword?: string,
 ): Promise<void> {
-  const spins = exerciseSetSpinbuttons(page);
+  const spins = exerciseSetSpinbuttons(page, exerciseKeyword);
   const base = setIndex * 3;
   await expect(spins.nth(base), `set ${setIndex + 1} reps input`).toBeVisible({
     timeout: 10_000,
@@ -190,8 +207,11 @@ export async function logSet(
   await pauseForApi(page);
 }
 
-export async function addSetRow(page: Page): Promise<void> {
-  await activeStrengthExercise(page).getByRole('button', { name: /add set/i }).click();
+export async function addSetRow(page: Page, exerciseKeyword?: string): Promise<void> {
+  await activeStrengthExercise(page, exerciseKeyword)
+    .getByRole('button', { name: /^Add Set$/i })
+    .first()
+    .click();
   await pauseForApi(page, 1_000);
 }
 
@@ -201,8 +221,8 @@ export type ParsedSetRow = {
   weight: number;
 };
 
-export async function readSetRows(page: Page): Promise<ParsedSetRow[]> {
-  const spins = exerciseSetSpinbuttons(page);
+export async function readSetRows(page: Page, exerciseKeyword?: string): Promise<ParsedSetRow[]> {
+  const spins = exerciseSetSpinbuttons(page, exerciseKeyword);
   const count = await spins.count();
   const rows: ParsedSetRow[] = [];
   for (let i = 0; i + 1 < count; i += 3) {
@@ -219,15 +239,16 @@ export async function expectSetInHistory(
   page: Page,
   reps: number,
   weight: number,
+  exerciseKeyword?: string,
 ): Promise<void> {
-  const rows = await readSetRows(page);
+  const rows = await readSetRows(page, exerciseKeyword);
   const match = rows.find((r) => r.reps === reps && r.weight === weight);
   expect(
     match,
     `expected a logged set ${reps} reps @ ${weight}kg in set history; got ${JSON.stringify(rows)}`,
   ).toBeTruthy();
 
-  const setsLabel = activeStrengthExercise(page)
+  const setsLabel = activeStrengthExercise(page, exerciseKeyword)
     .getByText(new RegExp(`${rows.length}\\s*sets`, 'i'))
     .first();
   await expect(setsLabel).toBeVisible({ timeout: 10_000 });

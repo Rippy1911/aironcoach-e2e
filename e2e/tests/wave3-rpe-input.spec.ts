@@ -13,12 +13,13 @@ import {
   screenshotWave3,
   uploadWave3Artifacts,
   dismissInProgressWorkoutIfNeeded,
+  wave3PaceBetweenSpecs,
 } from '../helpers/wave3';
 import { pauseForApi } from '../helpers/wave2';
 
 test.describe('wave3-rpe-input', () => {
   test.beforeEach(async ({ page }) => {
-    await page.waitForTimeout(3_000);
+    await wave3PaceBetweenSpecs(page);
     await dismissInProgressWorkoutIfNeeded(page);
   });
 

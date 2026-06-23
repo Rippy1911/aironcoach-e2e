@@ -14,12 +14,15 @@ import {
   uploadWave3Artifacts,
   dismissInProgressWorkoutIfNeeded,
   cleanupActiveWorkout,
+  wave3PaceBetweenSpecs,
 } from '../helpers/wave3';
 import { pauseForApi } from '../helpers/wave2';
 
+const EXERCISE = 'pulldown';
+
 test.describe('wave3-log-set', () => {
   test.beforeEach(async ({ page }) => {
-    await page.waitForTimeout(3_000);
+    await wave3PaceBetweenSpecs(page);
     await dismissInProgressWorkoutIfNeeded(page);
   });
 
@@ -29,11 +32,11 @@ test.describe('wave3-log-set', () => {
 
     try {
       await startWorkoutFromTraining(page);
-      await addExerciseFromSearch(page, 'pulldown');
-      await expectFirstExerciseVisible(page, /pulldown/i);
+      await addExerciseFromSearch(page, EXERCISE);
+      await expectFirstExerciseVisible(page, EXERCISE);
 
-      await logSet(page, 0, 10, 50);
-      await expectSetInHistory(page, 10, 50);
+      await logSet(page, 0, 10, 50, EXERCISE);
+      await expectSetInHistory(page, 10, 50, EXERCISE);
 
       artifacts.push({
         label: 'set-1-logged',
@@ -41,10 +44,10 @@ test.describe('wave3-log-set', () => {
         tags: ['workout', 'log-set', 'set-1'],
       });
 
-      await addSetRow(page);
+      await addSetRow(page, EXERCISE);
       await pauseForApi(page);
-      await logSet(page, 1, 10, 52);
-      await expectSetInHistory(page, 10, 52);
+      await logSet(page, 1, 10, 52, EXERCISE);
+      await expectSetInHistory(page, 10, 52, EXERCISE);
 
       artifacts.push({
         label: 'set-2-logged',
