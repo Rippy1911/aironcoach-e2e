@@ -55,7 +55,7 @@ export default defineConfig({
       // Same storage state + DB user: parallel specs wipe each other's ActivityLog / workouts.
       workers: 1,
       testMatch:
-        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|workout-logging|planned-workout-completion|ai-coach-chat-pro)\.spec\.ts/,
+        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|wave2-.*|workout-logging|planned-workout-completion|ai-coach-chat-pro)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: storageStateFor('pro'),
