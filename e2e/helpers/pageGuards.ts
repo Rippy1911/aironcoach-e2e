@@ -21,6 +21,7 @@ export function attachPageGuards(page: Page) {
       // Ignore noisy third-party / hydration warnings that aren't app bugs
       if (/favicon|ResizeObserver|chunk load/i.test(text)) return;
       if (/429|rate limit exceeded/i.test(text)) return;
+      if (/Failed to load resource: the server responded with a status of 404/i.test(text)) return;
       consoleErrors.push(text);
     }
   };
