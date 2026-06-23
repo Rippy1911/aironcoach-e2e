@@ -92,13 +92,23 @@ export async function expectActiveWorkoutPage(page: Page): Promise<void> {
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     const ready = page
       .getByRole('button', { name: /finish workout/i })
       .or(page.getByRole('button', { name: /add exercise/i }))
       .first();
     if (await ready.isVisible({ timeout: 12_000 }).catch(() => false)) return;
-    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    if (attempt === 2) {
+      await page.goto(routes.training);
+      await expectAuthBootstrapped(page);
+      await acceptCookiesIfPresent(page);
+      await page.getByRole('button', { name: /^Start$/i }).first().click();
+      await pauseForApi(page);
+      continue;
+    }
+
+    await page.goto(routes.activeWorkout);
     await expectAuthBootstrapped(page);
     await acceptCookiesIfPresent(page);
     await pauseForApi(page);
@@ -326,19 +336,16 @@ export async function expectWorkoutInHistory(
   ).toBeVisible({ timeout: 15_000 });
 }
 
-export async function discardActiveWorkout(page: Page): Promise<void> {
-  await page.goto(routes.workoutCalendar);
+export async function cleanupActiveWorkout(page: Page): Promise<void> {
+  await page.goto(routes.activeWorkout);
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
-  await pauseForApi(page, 1_000);
 
-  const inProgress = page.getByText(/workout in progress/i);
-  if (!(await inProgress.isVisible({ timeout: 4_000 }).catch(() => false))) return;
-
-  await clickStartWorkout(page);
+  const finish = page.getByRole('button', { name: /finish workout/i });
+  if (!(await finish.isVisible({ timeout: 8_000 }).catch(() => false))) return;
 
   const discard = page.getByRole('button', { name: /discard workout/i });
-  if (await discard.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  if (await discard.isVisible({ timeout: 3_000 }).catch(() => false)) {
     await discard.click({ force: true });
     await pauseForApi(page, 1_000);
     const confirm = page
@@ -354,6 +361,18 @@ export async function discardActiveWorkout(page: Page): Promise<void> {
 
   await finishWorkout(page);
   await closeFinishSummary(page);
+}
+
+export async function discardActiveWorkout(page: Page): Promise<void> {
+  await page.goto(routes.workoutCalendar);
+  await expectAuthBootstrapped(page);
+  await acceptCookiesIfPresent(page);
+  await pauseForApi(page, 1_000);
+
+  const inProgress = page.getByText(/workout in progress/i);
+  if (!(await inProgress.isVisible({ timeout: 4_000 }).catch(() => false))) return;
+
+  await cleanupActiveWorkout(page);
 }
 
 /** Clear any in-progress ActiveWorkout so the next spec starts clean. */

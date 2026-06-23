@@ -13,6 +13,7 @@ import {
   screenshotWave3,
   uploadWave3Artifacts,
   dismissInProgressWorkoutIfNeeded,
+  cleanupActiveWorkout,
 } from '../helpers/wave3';
 import { pauseForApi } from '../helpers/wave2';
 
@@ -69,6 +70,7 @@ test.describe('wave3-start-workout', () => {
       });
     } finally {
       guards.detach();
+      await cleanupActiveWorkout(page).catch(() => {});
     }
   });
 });
