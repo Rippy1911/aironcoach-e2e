@@ -26,6 +26,7 @@ export function attachPageGuards(page: Page) {
   };
 
   const onPageError = (err: Error) => {
+    if (/429|rate limit exceeded/i.test(err.message)) return;
     pageErrors.push(err.message);
   };
 
