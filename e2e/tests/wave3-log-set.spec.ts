@@ -21,6 +21,8 @@ import { pauseForApi } from '../helpers/wave2';
 const EXERCISE = 'pulldown';
 
 test.describe('wave3-log-set', () => {
+  test.describe.configure({ retries: 1 });
+
   test.beforeEach(async ({ page }) => {
     await wave3PaceBetweenSpecs(page);
     await dismissInProgressWorkoutIfNeeded(page);

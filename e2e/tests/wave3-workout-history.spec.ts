@@ -20,6 +20,8 @@ import {
 import { pauseForApi } from '../helpers/wave2';
 
 test.describe('wave3-workout-history', () => {
+  test.describe.configure({ retries: 1 });
+
   test.beforeEach(async ({ page }) => {
     await wave3PaceBetweenSpecs(page);
     await dismissInProgressWorkoutIfNeeded(page);

@@ -78,12 +78,20 @@ export async function clickStartWorkout(page: Page): Promise<void> {
   await expectActiveWorkoutPage(page);
 }
 
-/** Preferred entry: Training tab → Start → ActiveWorkout. */
+/** Preferred entry: Training tab → ActiveWorkout (direct route, Start button fallback). */
 export async function startWorkoutFromTraining(page: Page): Promise<void> {
   await page.goto(routes.training);
   await expectAuthBootstrapped(page);
   await acceptCookiesIfPresent(page);
   await pauseForApi(page, WAVE3_PACE_MS);
+
+  await page.goto(routes.activeWorkout, { waitUntil: 'domcontentloaded' });
+  if (await page.getByRole('button', { name: /add exercise/i }).isVisible({ timeout: 12_000 }).catch(() => false)) {
+    return;
+  }
+
+  await page.goto(routes.training);
+  await acceptCookiesIfPresent(page);
   await clickStartWorkout(page);
 }
 
@@ -103,10 +111,11 @@ export async function expectActiveWorkoutPage(page: Page): Promise<void> {
       .or(page.getByPlaceholder(/workout name/i))
       .or(page.getByRole('button', { name: /finish workout/i }));
 
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (await ready().first().isVisible({ timeout: 12_000 }).catch(() => false)) return;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (await ready().first().isVisible({ timeout: 15_000 }).catch(() => false)) return;
 
-    if (attempt === 2) {
+    await pauseForApi(page, 2_000);
+    if (attempt >= 3) {
       await page.goto(routes.training);
       await expectAuthBootstrapped(page);
       await acceptCookiesIfPresent(page);

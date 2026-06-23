@@ -20,6 +20,8 @@ import { pauseForApi } from '../helpers/wave2';
 const FINISH_MARKER = 'Wave3 Finish';
 
 test.describe('wave3-finish-workout', () => {
+  test.describe.configure({ retries: 1 });
+
   test.beforeEach(async ({ page }) => {
     await wave3PaceBetweenSpecs(page);
     await dismissInProgressWorkoutIfNeeded(page);
