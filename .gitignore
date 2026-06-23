@@ -15,3 +15,6 @@ promo-assets/
 
 *.log
 .DS_Store
+
+# Cursor MCP config (per-repo runtime config -- copy from .example)
+.cursor/mcp.json
