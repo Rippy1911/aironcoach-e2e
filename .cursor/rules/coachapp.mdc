@@ -2,7 +2,7 @@
 description: Airon Coach architecture, QA, and prompt-writing assumptions
 globs:
   - "**/*"
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Airon Coach architecture and prompt rules
