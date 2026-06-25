@@ -7,37 +7,52 @@ Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie A
 ## Problem
 
 1. Oferty z Services nie widać na profilu coacha (tab Coach).
-2. Brak edycji na żywo na własnym profilu — user musi szukać Settings / wizard.
-3. Po zostaniu coachem personal powinien być domyślnie prywatny; własny profil coacha = wizytówka jako centrum, nie rozjeżdżone Overview/Activity.
+2. Brak wygodnej edycji na własnym profilu — user szuka Settings / wizard.
+3. Po zostaniu coachem brak jasnego flow widoczności; profil personal i coach się rozjeżdżają.
 
 ---
 
 ## Oczekiwane zachowanie
 
 ### Oferty na wizytówce
-- Aktywne publiczne oferty z Services na tab Coach (u gościa i u siebie).
+- Aktywne publiczne oferty z Services na tab Coach (gość i właściciel).
 - Zarchiwizowane / niepubliczne — nie.
 - Zmiana w Services od razu widać na profilu.
 
-### Własny profil — inline edit (coach i zwykły user u siebie)
+### Własny profil — ołówek + inline edit + Guest View
 
-**Wzorzec UI (obowiązkowy na własnym profilu):**
+**Wzorzec (coach i zwykły user u siebie):**
+- Przy każdym edytowalnym polu ikona ołówka (tylko właściciel, tylko poza Guest View).
+- Klik → edycja na miejscu (inline lub lekki sheet), bez pełnej nowej strony dla prostych pól.
+- Tab Coach (coach): zdjęcie, nazwa, headline, bio, specjalizacje, lokalizacja, tryb treningu, widoczność coacha, accepting clients.
+- Tab Overview (user u siebie): bio, zdjęcie, podstawowe dane personal — ten sam wzorzec ołówka.
 
-- Przy **każdym edytowalnym polu** widoczna ikona ołówka (lub tap na pole) — tylko dla właściciela profilu, tylko poza Guest View.
-- Klik ołówka → edycja **na miejscu** (inline lub mały popover/sheet — nie pełna nowa strona dla prostych pól).
-- Pola z ołówkiem na tab Coach (coach): zdjęcie/logo, nazwa publiczna, headline, bio, specjalizacje, lokalizacja, tryb treningu, widoczność / accepting clients, cena „from” jeśli jest na wizytówce.
-- Pola z ołówkiem na Overview (user u siebie): bio, zdjęcie, podstawowe dane personal — spójny ten sam wzorzec co coach.
-- **Karty ofert** na profilu: u siebie — ołówek lub „Edit in Services” prowadzą do edycji oferty; u gościa — tylko CTA (np. Request / View), bez ołówka.
-- Zapis: autosave lub wyraźny „Save” przy polu — bez gubienia stanu po kliknięciu gdzie indziej.
-- **Guest View** w headerze profilu (przełącznik lub przycisk): chowa wszystkie ołówki i kontrolki edycji; pokazuje dokładnie widok gościa. Powrót jednym klikiem.
+**Oferty na profilu (właściciel):**
+- Ołówek na karcie oferty → szybka edycja na miejscu: tytuł, cena, krótki opis, widoczność publiczna.
+- Link „Więcej w Services” / „Manage in Services” → pełna edycja (archiwum, tier, szczegóły) — jedno źródło prawdy dla złożonych rzeczy.
 
-### Po zostaniu coachem
-- Personal / overview domyślnie **prywatny**.
-- Własny profil coacha: domyślny tab **Coach**.
-- Overview / Activity u siebie — uproszczone lub wtórne; gość ich nie widzi jeśli personal prywatny.
+**Oferty (gość):**
+- Tylko przycisk **„Request coaching”** (główny CTA) + opcjonalnie **„Message”** obok — bez ołówka.
+
+**Guest View:**
+- Tylko **toggle w headerze** profilu (nie osobny URL).
+- Włączony = dokładnie widok gościa, zero ołówków.
+- Wyłączony = tryb edycji z ołówkami.
+
+### Zostajesz coachem — widoczność i uproszczenie
+
+**W flow tworzenia / aktywacji coacha** (Create coach profile lub pierwszy save):
+- Pytanie: **„Udostępnić profil coacha publicznie?”** (lub po angielsku odpowiednik w UI apki).
+- Checkbox **domyślnie zaznaczony (publiczny)** — user musi świadomie odznaczyć, żeby zostać prywatnym.
+- Krótki helper: publiczny = widać w directory i na wizytówce; prywatny = tylko Ty i link.
+
+**Personal vs coach:**
+- Warstwa personal / Overview **nie jest drugą publiczną tożsamością** — zostaje prywatna / uproszczona dla coacha.
+- Własny profil coacha: **domyślny tab Coach** (wizytówka).
+- Tab **Overview zostaje**, ale **nie jest domyślny** — dla streaku / aktywności treningowej u siebie; gość go nie widzi jeśli personal prywatny.
 
 ### Gość / inny user
-- Tylko publiczna wizytówka + oferty. Zero ołówków, zero Guest View.
+- Publiczna wizytówka coacha + oferty + CTA. Zero ołówków, zero Guest View.
 
 ---
 
@@ -48,4 +63,4 @@ Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie A
 ---
 
 ## Test w UI
-Oferta w Services → widać na Coach tab. Ołówki przy polach u siebie. Guest View chowa edycję. Nowy coach → personal prywatny, default tab Coach.
+Oferta w Services → na Coach tab. Ołówki u siebie; szybka edycja oferty na profilu; Guest View toggle. Nowy coach: pytanie o publiczność, default zaznaczony. Default tab Coach u siebie. Gość: Request coaching na ofercie.
