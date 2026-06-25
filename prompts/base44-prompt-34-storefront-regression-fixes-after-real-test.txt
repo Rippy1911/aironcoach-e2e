@@ -1,0 +1,305 @@
+PROMPT 34 — Storefront regression fixes after real account test
+
+═══════════════════════════════════════════════════════════════
+REAL TEST CONTEXT — VERIFIED WITH PROVIDED TEST ACCOUNTS
+═══════════════════════════════════════════════════════════════
+
+Tested on production after Prompt 33 deploy.
+
+Bundle:
+  https://airon.coach/assets/index-eKSrJgVO.js
+
+Coach profile:
+  /UserProfile?id=6a3ca50c65a59273f399090e&tab=coach
+
+Test accounts used:
+  Coach owner: lokistakontakt@gmail.com
+  Visitor/user: lokistastream@gmail.com
+
+IMPORTANT:
+  Do NOT commit passwords into the repo. Passwords were provided in chat only
+  for manual/Playwright verification.
+
+Screenshots / Playwright observations:
+
+VISITOR DESKTOP:
+  ✓ Coach content visible
+  ✓ Follow / Send message request visible
+  ✓ No owner toolbar
+  ✓ No old admin content
+  ✓ Price card appears on the right (x≈1042)
+  ✗ Right column is too minimal / not clearly an "offers" area
+  ✗ It shows price + experience, but not a full storefront offers rail
+
+OWNER DESKTOP:
+  ✓ Edit mode works
+  ✓ Pencils visible
+  ✗ Old admin content is STILL inside main profile content:
+      - Open Coach Hub button
+      - Profile & visibility card
+      - Share my coach profile publicly toggle
+      - Accepting new clients toggle
+  ✗ Owner toolbar is not top-right in the hero; it still sits in the normal
+    hero content flow under the profile text.
+  ✗ Right column contains profile facts (Location/mode, Experience,
+    Availability) mixed with price. It should be an offer/conversion column.
+
+VISITOR MOBILE:
+  ✗ Primary offer is NOT immediately under hero.
+  Current order:
+    Hero → tabs → About → Specialties → price card → Experience
+  Required order:
+    Hero → primary offer card → tabs/content → remaining content
+
+═══════════════════════════════════════════════════════════════
+GOAL
+═══════════════════════════════════════════════════════════════
+
+Prompt 33 was directionally correct, but the implementation left admin blocks
+and did not fully enforce mobile/storefront ordering.
+
+Make a surgical follow-up fix:
+
+  1. Remove owner admin blocks from ProfileCoachTab main content.
+  2. Move owner controls into a compact top-right hero toolbar.
+  3. Make right sidebar a pure coaching offer / conversion rail.
+  4. On mobile, show the primary offer immediately under the hero.
+  5. Keep profile facts (Experience, Location/mode) in main content, not as
+     separate cards competing with offers on the right.
+
+No drag & drop. No page builder.
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — REMOVE OLD ADMIN BLOCKS FROM PROFILE CONTENT
+═══════════════════════════════════════════════════════════════
+
+In components/profile/ProfileCoachTab:
+
+Remove from the rendered coach profile content:
+
+  ✗ Open Coach Hub button/card
+  ✗ Profile & visibility card
+  ✗ Share my coach profile publicly toggle
+  ✗ Accepting new clients toggle
+
+These must not render inside the coach profile main column.
+
+Owner can still manage these from:
+  - Hero owner toolbar
+  - Coach Hub → Profile Studio
+
+Acceptance:
+  Owner body text must NOT contain:
+    "Open Coach Hub"
+    "Profile & visibility"
+    "Share my coach profile publicly"
+    "Accepting new clients"
+  inside the profile content area.
+
+Note:
+  It is OK for the global left sidebar navigation to contain "Coach Hub".
+  The forbidden item is the big content button/card inside ProfileCoachTab.
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — HERO OWNER TOOLBAR MUST BE TOP-RIGHT, NOT CONTENT FLOW
+═══════════════════════════════════════════════════════════════
+
+In pages/UserProfile:
+
+Owner actions should be an absolutely/visually positioned toolbar in the hero:
+
+  Desktop:
+    top-right corner of hero card
+    small buttons:
+      Guest View
+      Copy link
+      Coach Hub
+      optional more menu
+
+  Mobile:
+    compact row under hero header OR top-right if space allows
+    but still visually separated from profile content
+
+Do NOT render these controls as a large row below name/headline like visitor CTAs.
+
+Visitor CTAs remain in content flow:
+  Follow
+  Send message request
+  Share
+
+Owner toolbar acceptance:
+  - owner sees Guest View / Copy profile link / Coach Hub
+  - visitor does not
+  - toolbar is anchored top-right on desktop hero
+  - no duplicate "Open Coach Hub" appears below tabs/content
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — RIGHT SIDEBAR = OFFER / CONVERSION RAIL ONLY
+═══════════════════════════════════════════════════════════════
+
+Current right column mixes:
+  - Location & mode
+  - price
+  - Experience
+  - Availability
+
+Change it to a clear offer rail:
+
+Right sidebar should contain:
+  1. Featured coaching service card if services exist
+  2. Additional service cards, if any
+  3. Fallback price/contact card if no services exist
+  4. CTA: Book a Session / Request coaching / Send message request
+  5. Small availability summary only if directly relevant to booking
+
+Right sidebar should NOT contain as separate cards:
+  ✗ Experience
+  ✗ Location & mode
+  ✗ Certifications
+  ✗ profile facts that belong in content
+
+Move those to main content:
+  Main content sections:
+    About
+    Specialties
+    Experience
+    Certifications
+    Testimonials
+    Location & mode
+
+For the no-services fallback:
+  Card title should be explicit:
+    "Coaching offer" or "Coaching available"
+  Show:
+    price_per_session + currency
+    "per session"
+    CTA
+    optional "Online" / accepting clients badge
+
+The visitor should instantly understand:
+  - what can I buy?
+  - how much does it cost?
+  - what button do I click?
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — MOBILE ORDER: OFFER IMMEDIATELY UNDER HERO
+═══════════════════════════════════════════════════════════════
+
+Current visitor mobile order is wrong:
+
+  Hero
+  Tabs
+  About
+  Specialties
+  Price card
+  Experience
+
+Required mobile order:
+
+  Hero
+  Primary offer card / fallback price card
+  Tabs
+  About
+  Specialties
+  Experience
+  Certifications
+  Testimonials
+  Location & mode
+
+Implementation guidance:
+
+  Use CSS order classes or render a dedicated mobile offer block:
+
+    <div className="lg:hidden">
+      <CoachStorefrontSidebar variant="mobile-primary" />
+    </div>
+
+    <div className="hidden lg:block">
+      <CoachStorefrontSidebar />
+    </div>
+
+  Avoid duplicating booking side effects. If duplicated visually, both CTAs
+  call the same handler.
+
+Acceptance:
+  On 390px mobile viewport, the price/offer card appears before About and
+  Specialties in scroll order.
+
+═══════════════════════════════════════════════════════════════
+FIX 5 — PROFILE STUDIO IS FOR ADMIN CONTROLS
+═══════════════════════════════════════════════════════════════
+
+Coach Hub → Profile Studio should be the place for:
+
+  - public/private
+  - accepting clients
+  - headline / bio / profile identity
+  - avatar / cover
+  - location / mode
+  - certifications / experience / testimonials
+
+Services must remain separate:
+  Coach Hub → Services or /CoachServices
+
+Profile Studio must NOT create or edit service packages.
+
+═══════════════════════════════════════════════════════════════
+REGRESSION TESTS TO RUN
+═══════════════════════════════════════════════════════════════
+
+Use the provided accounts:
+  Coach owner: lokistakontakt@gmail.com
+  Visitor/user: lokistastream@gmail.com
+
+Do NOT store passwords in repo.
+
+T1 — Visitor desktop:
+  Login as visitor
+  Open /UserProfile?id=6a3ca50c65a59273f399090e&tab=coach
+  ✓ Follow + Send message request visible
+  ✓ No owner toolbar
+  ✓ No Open Coach Hub
+  ✓ Right column has clear Coaching offer card
+  ✓ Price + CTA visible above fold
+
+T2 — Owner desktop:
+  Login as coach
+  Open same URL
+  ✓ Edit banner and pencils visible
+  ✓ Owner toolbar top-right in hero
+  ✓ No Open Coach Hub content button/card under tabs
+  ✓ No Profile & visibility card in main content
+  ✓ Right column is offer/conversion rail, not admin/profile facts
+
+T3 — Visitor mobile 390px:
+  Login as visitor
+  Open same URL
+  ✓ Offer/price card is immediately under hero
+  ✓ About and Specialties come after offer card
+  ✓ CTA visible before long bio content
+
+T4 — Coach Hub:
+  Login as coach
+  Open /CoachBusinessHub
+  ✓ Profile Studio exists
+  ✓ Visibility / accepting clients live there
+  ✓ Services are still separate
+
+═══════════════════════════════════════════════════════════════
+DEFINITION OF DONE
+═══════════════════════════════════════════════════════════════
+
+Public profile:
+  clean storefront, not admin panel.
+
+Owner view:
+  edit mode works, but admin controls are not embedded in profile content.
+
+Right sidebar:
+  only coaching offer / booking conversion.
+
+Mobile:
+  offer appears immediately under hero.
+
+Coach Hub:
+  Profile Studio owns profile settings; Services owns offers.
