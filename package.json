@@ -13,7 +13,9 @@
     "e2e:smoke": "playwright test smoke-",
     "e2e:promo": "PROMO_CAPTURE=1 playwright test --project=promo --project=promo-mobile --reporter=list && node scripts/collect-promo-assets.mjs",
     "e2e:install": "playwright install --with-deps chromium",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "audit:prod": "node scripts/ui-audit-prod.mjs",
+    "audit:deploy": "node scripts/prompt-deploy-audit.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

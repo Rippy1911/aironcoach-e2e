@@ -57,7 +57,7 @@ if (await coachProfileNav.first().isVisible({ timeout: 3000 }).catch(() => false
     add('P1', 'Settings', '?tab=coach query param ignored', 'URL Settings?tab=coach shows Account/Trainee form, not coach panel', '31-settings-coach-clicked.png');
   }
   if (!/deactivate|pause coach|reactivate/i.test(coachSettingsText)) {
-    add('P2', 'Settings/Coach', 'No coach lifecycle controls', 'Missing pause/deactivate/reactivate per prompt 06', '31-settings-coach-clicked.png');
+    add('P2', 'Settings/Coach', 'No coach lifecycle controls visible', 'Expected pause/deactivate/reactivate from prompt 13', '31-settings-coach-clicked.png');
   }
 }
 
@@ -148,8 +148,10 @@ if (await myProfileLink.isVisible({ timeout: 3000 }).catch(() => false)) {
   add('P1', 'Menu', 'My Profile link not found in profile menu', `Logged in as ${EMAIL}`);
 }
 
-// Menu flyout
+// Menu flyout — presence uses busy/dnd/invisible (not legacy Away/Busy/Offline copy)
 await go('/Home', null);
+const acceptFlyout = page.getByRole('button', { name: /^Accept$/i });
+if (await acceptFlyout.isVisible({ timeout: 1000 }).catch(() => false)) await acceptFlyout.click({ force: true });
 const profileTrigger = page.locator(`text=${USER_SLUG}`).first();
 if (await profileTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
   await profileTrigger.click({ force: true });
@@ -160,13 +162,25 @@ if (await profileTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
   }
 }
 await page.waitForTimeout(1500);
-const online = page.getByText('Online', { exact: true }).first();
-if (await online.isVisible()) {
-  await online.hover();
+const online = page.locator('[class*="popover"], [role="menu"]').getByText('Online', { exact: true }).first();
+if (await online.isVisible({ timeout: 2000 }).catch(() => false)) {
+  await online.hover({ force: true });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: path.join(OUT, '38-online-hover.png') });
-  const flyout = await page.getByText(/Away|Busy|Offline/i).first().isVisible().catch(() => false);
-  if (!flyout) add('P0', 'Menu', 'Online flyout not visible', 'Hover Online — no Away/Busy/Offline panel', '38-online-hover.png');
+  const flyout = await page
+    .getByText(/Busy|Zajęty|DND|Do not disturb|Invisible|Niewidoczny/i)
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (!flyout) {
+    add(
+      'P1',
+      'Menu',
+      'Presence flyout options not visible on hover',
+      'Expected busy/dnd/invisible presence panel after hovering Online',
+      '38-online-hover.png',
+    );
+  }
 }
 
 // Dedupe API errors

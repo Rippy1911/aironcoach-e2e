@@ -228,6 +228,12 @@ Prompt: `prompts/base44-prompt-08-coach-ui-audit.txt`
 
 Pełny raport: **`docs/ui-audit-2026-06-24.md`**  
 **QA exploration (logged-in, coach create):** **`docs/qa-exploration-2026-06-24.md`**
+**Pełny status deployu promptów 09–13:** **`docs/prod-deploy-status-2026-06-25.md`**
+
+```bash
+node scripts/prompt-deploy-audit.mjs   # allDeployed: true (2026-06-25)
+```
+
 **Prompt runbook:** **`docs/base44-fix-runbook.md`**
 
 Narzędzia:
@@ -239,19 +245,12 @@ node scripts/coach-create-probe.mjs   # wypełnia + zapisuje coach profile
 node scripts/qa-sweep.mjs
 ```
 
-**Bloker prod:** ~~oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**~~ **rozwiązany 2026-06-25.**
+**Status promptów Base44:** **07 + 09–13 wdrożone na prod** (bundle `index-CxFQPeji.js`). Nie wklejaj ponownie bez regresji.
 
-**Rerun 2026-06-25 (po deploy prompt 07):** bundle `assets/index-CxFQPeji.js`; `canonicalByAuthIdQuery=true`; `coachTabLast=false`; `archiveOfferLabel=true`; coach create PASS; My Profile = Loki Stream (`6a3ca50c65a59273f399090e`).
-
-**Sekwencja promptów (następne kroki):**
-1. ~~`prompts/base44-prompt-09-canonical-profile-hotfix.txt`~~ — superseded (07 done)
-2. `prompts/base44-prompt-10-coach-hub-stats-after-canonical.txt`
-3. `prompts/base44-prompt-11-coach-card-services-layout.txt`
-4. `prompts/base44-prompt-12-profile-menu-flyout-chevrons.txt`
-5. `prompts/base44-prompt-13-coach-lifecycle-v2.txt`
+**Rerun 2026-06-25:** `prompt-deploy-audit` → allDeployed; Community/Hub ~86% szerokości; coach lifecycle + presence w bundle; qa-sweep bez mkpiwecki/flyout false positives.
 
 ---
 
 ## Ostatnia aktualizacja
 
-2026-06-25 — prompt 07 wdrożony na prod; canonical profile + coach funnel PASS; następne: prompty 10–13.
+2026-06-25 — prompty 07 + 09–13 potwierdzone na prod; nowy skrypt `prompt-deploy-audit.mjs`.
