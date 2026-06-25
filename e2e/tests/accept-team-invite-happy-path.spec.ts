@@ -78,19 +78,34 @@ test.describe('PR #66/#68 acceptTeamInvite full happy path', () => {
     test.skip(!owned, 'coach account does not own/train a team — set up a team first');
     const teamId = owned!.team_id;
 
-    // 2. Create the invite for the user.
-    const invite = await coachApi.invokeFunction<{ token: string; ok?: boolean; error?: string }>(
+    // 2. Create the invite for the user. createTeamInvite returns
+    //    { ok, invite_id, token, recipient_registered } — the token is returned
+    //    to the authenticated inviter so the app can deep-link/preview the
+    //    accept URL (the token is also in the emailed link + Notification, so
+    //    this adds no new exposure). NOTE: this requires the createTeamInvite
+    //    token-return change to be DEPLOYED — until then this spec fails as a
+    //    deploy-drift guard (same pattern as upgrade-monthly-copy.spec.ts).
+    //    Rationale for reading the token from the response (not TeamInvite /
+    //    Notification entities): rows created server-side via asServiceRole in
+    //    createTeamInvite are NOT visible to the user-scoped SDK afterwards
+    //    (TeamInvite.filter + Notification.filter both return [] for coach and
+    //    invitee despite RLS rules nominally allowing it — same service-role
+    //    row-visibility quirk class as the seedCommunityDemo Team.update 403).
+    const invite = await coachApi.invokeFunction<{ ok?: boolean; invite_id?: string; token?: string; recipient_registered?: boolean; error?: string }>(
       'createTeamInvite',
       { team_id: teamId, invited_email: USER_EMAIL, role: 'member' },
     );
     expect(invite, 'createTeamInvite returned a result').toBeTruthy();
+    console.log('\n[happy-path] createTeamInvite result:', JSON.stringify(invite), '\n');
+    expect((invite as { error?: string }).error, 'createTeamInvite should not error').toBeFalsy();
     const token = (invite as { token?: string }).token;
-    expect(token, 'invite returned a token').toBeTruthy();
+    expect(token, 'createTeamInvite returns a token (requires the token-return change to be deployed)').toBeTruthy();
 
     // 3. As the user, accept the invite.
-    const userMe = await userApi.me();
-    expect(userMe.email, 'user storage state is the user account').toBe(USER_EMAIL);
+    const userMe0 = await userApi.me();
+    expect(userMe0.email, 'user storage state is the user account').toBe(USER_EMAIL);
 
+    // 3. As the user, accept the invite. (userMe already verified above.)
     let acceptResult: unknown = null;
     let acceptErr: unknown = null;
     try {
@@ -109,8 +124,12 @@ test.describe('PR #66/#68 acceptTeamInvite full happy path', () => {
       /^accepted|already_accepted$/,
     );
 
-    // 4. Cleanup: remove the TeamMember row so the test is re-runnable, and
-    //    mark the invite accepted (best-effort).
+    // 4. Cleanup: remove the TeamMember row so the test is re-runnable.
+    //    TeamInvite + Notification rows are SDK-unreadable for the invitee
+    //    (service-role row-visibility quirk — see step 2 comment), so we can't
+    //    revoke/delete them from here. acceptTeamInvite is idempotent
+    //    (`already_accepted` / status checks server-side), so re-runs are safe;
+    //    a fresh invite is created each run only if no pending one exists.
     const userMemberships = await userApi.filter<{ id: string; team_id: string; user_email: string }>(
       'TeamMember',
       { team_id: teamId, user_email: USER_EMAIL },
