@@ -2,7 +2,9 @@
 
 **Wklej do Base44 (ma kontekst apki — tylko opis problemu i oczekiwane zachowanie):**
 
-→ `prompts/base44-opus-phase2-14-19.txt` (wszystko naraz)
+→ `prompts/base44-prompt-20-coach-profile-live-edit-offers.txt` (**wklej teraz** — oferty na profilu + live edit + Guest View)
+
+→ `prompts/base44-opus-phase2-14-19.txt` (14–19, po 20 lub razem jeśli wolisz)
 
 Lub po jednym: `prompts/base44-prompt-14` … `19`
 

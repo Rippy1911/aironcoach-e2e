@@ -16,4 +16,6 @@ Airon Coach: jedno konto, coach = capability, Trainee nie Athlete, bez switchera
 
 **19 — Lifecycle:** delete public coach data (konto zostaje); jeden panel Coach w Settings; reactivate gdy dane zachowane.
 
+**20 — Profil coacha (priorytet):** oferty z Services widoczne na tab Coach; edycja live na własnym profilu; przycisk Guest View; po zostaniu coachem personal domyślnie prywatny, własny profil = tab Coach + edycja na miejscu (ten sam wzorzec Guest View dla zwykłego usera na swoim profilu).
+
 Na koniec: krótko co naprawione + jak przetestować w UI (bez listy plików).

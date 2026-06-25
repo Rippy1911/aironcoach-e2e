@@ -1,0 +1,54 @@
+Masz kontekst apki — zmień u siebie co trzeba.
+
+Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie Athlete. Bez switchera trybów.
+
+---
+
+## Problem
+
+1. **Oferty z Services nie widać na profilu coacha** — coach tworzy ofertę w Services, ale na publicznej wizytówce (tab Coach) jej nie ma.
+
+2. **Brak edycji na żywo na własnym profilu coacha** — coach musi iść gdzie indziej żeby coś zmienić; nie ma podglądu jak widzi go gość.
+
+3. **Po zostaniu coachem** — profil „zwykły” / personal powinien być **prywatny** domyślnie; coach nie powinien musieć osobno ogarniać Overview/Activity jak osobna publiczna warstwa. Własny profil coacha = centrum pracy (wizytówka + edycja), nie rozjeżdżone widoki.
+
+---
+
+## Oczekiwane zachowanie
+
+### Oferty na wizytówce
+- Aktywne publiczne oferty z Services **pojawiają się na tab Coach** (dla gościa i dla siebie).
+- Zarchiwizowane / niepubliczne — nie.
+- Edycja oferty w Services odświeża to co widać na profilu.
+
+### Własny profil coacha — edycja + Guest View
+Gdy **zalogowany coach ogląda swój profil** (tab Coach):
+
+- Widzi to samo co gość (**Guest View**), ale z warstwą edycji:
+  - inline / live edit pól wizytówki (nazwa, headline, bio, specjalizacje, zdjęcie, widoczność itd. — to co ma sens na wizytówce)
+  - zmiany zapisują się bez wymuszania osobnej strony wizarda dla prostych rzeczy
+- Przycisk **„Guest View”** (lub „Preview as guest”):
+  - przełącza podgląd: tylko to co widzi odwiedzający, bez kontrolek edycji
+  - z powrotem jednym kliknięciem do trybu edycji
+
+To samo dla **zwykłego usera na własnym profilu** (bez coacha): edycja na miejscu + Guest View — spójny wzorzec „mój profil = edytuję tu, nie gdzie indziej”.
+
+### Zostajesz coachem → personal prywatny
+- Aktywacja capability coach **ustawia profil personal / overview na prywatny** (lub odpowiednik w waszym modelu), żeby nie dublować publiczności.
+- Coach na **własnym** profilu: domyślnie **tab Coach** (wizytówka), nie Overview z pustymi Activity.
+- Overview / Activity dla coacha na własnym profilu: uproszczone lub wtórne — główna praca na tab Coach + Services.
+
+### Gość / inny user
+- Obcy widzi tylko publiczną wizytówkę coacha + oferty — bez edycji, bez Guest View.
+
+---
+
+## Nie psuj
+- Jedno konto, jeden UserProfile row.
+- Unified account — nie osobny „coach account”.
+- Istniejący Hub / Services / create coach flow.
+
+---
+
+## Na koniec (krótko)
+Jak przetestować w UI: utwórz ofertę w Services → widać na tab Coach; jako coach edytujesz na profilu live; Guest View chowa edycję; po zostaniu coachem personal nie jest publiczny z duplikatem treści.
