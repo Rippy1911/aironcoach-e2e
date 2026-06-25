@@ -51,11 +51,21 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      // Two-account team-invite happy path. No project-level storage state —
+      // the spec creates its own coach + user browser contexts from
+      // e2e/.auth/coach.json + e2e/.auth/user.json. Skipped at runtime unless
+      // TEST_COACH_EMAIL + TEST_USER_EMAIL are set in .env.
+      name: 'two-account-invite',
+      testMatch: /accept-team-invite-happy-path\.spec\.ts/,
+      workers: 1,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       name: 'pro',
       // Same storage state + DB user: parallel specs wipe each other's ActivityLog / workouts.
       workers: 1,
       testMatch:
-        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|wave2-.*|wave3-.*|workout-logging|planned-workout-completion|ai-coach-chat-pro|exercise-picker-add|achievements-self-heal|parse-ingredients)\.spec\.ts/,
+        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|wave2-.*|wave3-.*|workout-logging|planned-workout-completion|ai-coach-chat-pro|exercise-picker-add|achievements-self-heal|parse-ingredients|accept-team-invite)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: storageStateFor('pro'),
