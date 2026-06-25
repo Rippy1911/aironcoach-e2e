@@ -2,9 +2,9 @@
 
 **Wklej do Base44 (ma kontekst apki — tylko opis problemu i oczekiwane zachowanie):**
 
-→ `prompts/base44-prompt-21-coach-ux-simplify-marketing-edit.txt` (**wklej teraz** — Guest view domyślnie źle, Hub Edit → Marketing, uproszczenie UX)
+→ `prompts/base44-prompt-22-coach-hub-command-center.txt` (**wklej teraz** — Hub = centrum coacha, usuń Marketing z nav, wchłonie edycję profilu)
 
-→ `prompts/base44-prompt-20-coach-profile-live-edit-offers.txt` (dokończenie ołówków + oferty, jeśli 21 nie obejmie wszystkiego)
+→ `prompts/base44-prompt-21-coach-ux-simplify-marketing-edit.txt` (uzupełnienie: profil, ołówki, Guest view — 22 nadpisuje nawigację Marketing vs Hub)
 
 → `prompts/base44-opus-phase2-14-19.txt` (14–19, po 20 lub razem jeśli wolisz)
 
