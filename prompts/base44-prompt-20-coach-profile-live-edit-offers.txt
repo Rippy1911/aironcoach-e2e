@@ -6,49 +6,46 @@ Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie A
 
 ## Problem
 
-1. **Oferty z Services nie widać na profilu coacha** — coach tworzy ofertę w Services, ale na publicznej wizytówce (tab Coach) jej nie ma.
-
-2. **Brak edycji na żywo na własnym profilu coacha** — coach musi iść gdzie indziej żeby coś zmienić; nie ma podglądu jak widzi go gość.
-
-3. **Po zostaniu coachem** — profil „zwykły” / personal powinien być **prywatny** domyślnie; coach nie powinien musieć osobno ogarniać Overview/Activity jak osobna publiczna warstwa. Własny profil coacha = centrum pracy (wizytówka + edycja), nie rozjeżdżone widoki.
+1. Oferty z Services nie widać na profilu coacha (tab Coach).
+2. Brak edycji na żywo na własnym profilu — user musi szukać Settings / wizard.
+3. Po zostaniu coachem personal powinien być domyślnie prywatny; własny profil coacha = wizytówka jako centrum, nie rozjeżdżone Overview/Activity.
 
 ---
 
 ## Oczekiwane zachowanie
 
 ### Oferty na wizytówce
-- Aktywne publiczne oferty z Services **pojawiają się na tab Coach** (dla gościa i dla siebie).
+- Aktywne publiczne oferty z Services na tab Coach (u gościa i u siebie).
 - Zarchiwizowane / niepubliczne — nie.
-- Edycja oferty w Services odświeża to co widać na profilu.
+- Zmiana w Services od razu widać na profilu.
 
-### Własny profil coacha — edycja + Guest View
-Gdy **zalogowany coach ogląda swój profil** (tab Coach):
+### Własny profil — inline edit (coach i zwykły user u siebie)
 
-- Widzi to samo co gość (**Guest View**), ale z warstwą edycji:
-  - inline / live edit pól wizytówki (nazwa, headline, bio, specjalizacje, zdjęcie, widoczność itd. — to co ma sens na wizytówce)
-  - zmiany zapisują się bez wymuszania osobnej strony wizarda dla prostych rzeczy
-- Przycisk **„Guest View”** (lub „Preview as guest”):
-  - przełącza podgląd: tylko to co widzi odwiedzający, bez kontrolek edycji
-  - z powrotem jednym kliknięciem do trybu edycji
+**Wzorzec UI (obowiązkowy na własnym profilu):**
 
-To samo dla **zwykłego usera na własnym profilu** (bez coacha): edycja na miejscu + Guest View — spójny wzorzec „mój profil = edytuję tu, nie gdzie indziej”.
+- Przy **każdym edytowalnym polu** widoczna ikona ołówka (lub tap na pole) — tylko dla właściciela profilu, tylko poza Guest View.
+- Klik ołówka → edycja **na miejscu** (inline lub mały popover/sheet — nie pełna nowa strona dla prostych pól).
+- Pola z ołówkiem na tab Coach (coach): zdjęcie/logo, nazwa publiczna, headline, bio, specjalizacje, lokalizacja, tryb treningu, widoczność / accepting clients, cena „from” jeśli jest na wizytówce.
+- Pola z ołówkiem na Overview (user u siebie): bio, zdjęcie, podstawowe dane personal — spójny ten sam wzorzec co coach.
+- **Karty ofert** na profilu: u siebie — ołówek lub „Edit in Services” prowadzą do edycji oferty; u gościa — tylko CTA (np. Request / View), bez ołówka.
+- Zapis: autosave lub wyraźny „Save” przy polu — bez gubienia stanu po kliknięciu gdzie indziej.
+- **Guest View** w headerze profilu (przełącznik lub przycisk): chowa wszystkie ołówki i kontrolki edycji; pokazuje dokładnie widok gościa. Powrót jednym klikiem.
 
-### Zostajesz coachem → personal prywatny
-- Aktywacja capability coach **ustawia profil personal / overview na prywatny** (lub odpowiednik w waszym modelu), żeby nie dublować publiczności.
-- Coach na **własnym** profilu: domyślnie **tab Coach** (wizytówka), nie Overview z pustymi Activity.
-- Overview / Activity dla coacha na własnym profilu: uproszczone lub wtórne — główna praca na tab Coach + Services.
+### Po zostaniu coachem
+- Personal / overview domyślnie **prywatny**.
+- Własny profil coacha: domyślny tab **Coach**.
+- Overview / Activity u siebie — uproszczone lub wtórne; gość ich nie widzi jeśli personal prywatny.
 
 ### Gość / inny user
-- Obcy widzi tylko publiczną wizytówkę coacha + oferty — bez edycji, bez Guest View.
+- Tylko publiczna wizytówka + oferty. Zero ołówków, zero Guest View.
 
 ---
 
 ## Nie psuj
-- Jedno konto, jeden UserProfile row.
-- Unified account — nie osobny „coach account”.
-- Istniejący Hub / Services / create coach flow.
+- Jedno konto, jeden profil użytkownika.
+- Hub / Services / create coach flow.
 
 ---
 
-## Na koniec (krótko)
-Jak przetestować w UI: utwórz ofertę w Services → widać na tab Coach; jako coach edytujesz na profilu live; Guest View chowa edycję; po zostaniu coachem personal nie jest publiczny z duplikatem treści.
+## Test w UI
+Oferta w Services → widać na Coach tab. Ołówki przy polach u siebie. Guest View chowa edycję. Nowy coach → personal prywatny, default tab Coach.

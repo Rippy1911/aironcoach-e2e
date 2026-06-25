@@ -118,6 +118,11 @@ Base44 is already wired to this app and knows its own codebase. Prompts for Base
 Good: “`/Settings?tab=coach` should open the coach settings panel on cold load.”
 Bad: “Change `SettingsPage.tsx` and add `useSearchParams` for tab=coach.”
 
+When preparing prompts for the human operator, also in chat (not in the Base44 paste):
+- Propose concrete UI patterns (icons, layout, flows).
+- Ask clarifying product questions instead of leaving decisions to the user.
+- After each paste file, summarize what changed in that prompt.
+
 ### E2E repo / agent prompts (this repository)
 
 - Start with prod verification when unsure something is still broken.
