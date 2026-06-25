@@ -108,7 +108,8 @@ Bez chevron: My Profile, Coach Hub, Follows, Settings, Manage plan — direct na
 |------|------------|
 | `docs/base44-handoff.md` | Ten plik — kontekst |
 | `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | Coach Hub getCoachStats 404 |
-| `prompts/base44-prompt-07-duplicate-profile-fix.txt` | **P0** — duplicate UserProfile / zły profil po save coach |
+| `prompts/base44-prompt-08-coach-ui-audit.txt` | **Coach wizytówka + Services delete + UI audyt** (bez Home/Training) |
+| `prompts/base44-prompt-07-duplicate-profile-fix.txt` | Duplicate UserProfile / zły profil |
 | `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt` | Coach lifecycle — pause / deactivate / reactivate |
 | `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | Coach Hub getCoachStats 404 |
 | `prompts/base44-prompt-04-menu-profile-hub.txt` | Menu flyout + Profile Hub |
@@ -205,6 +206,16 @@ Po zapisie profilu coacha user widzi **inny profil** niż edytował (np. Marek N
 
 ---
 
+## Feedback UX coach profile + Services (2026-06-24)
+
+- Tab **Coach** jest ostatni (Overview/Activity pierwsze) — powinien być **pierwszy i default** (wizytówka)
+- Services: brak przycisku **Usuń/Archive** na ofertach (backend ma `archived`, UI nie)
+- Ogólnie: ekrany max-w-2xl, ~50% pustego ekranu po prawej — audyt UI wszystkich stron **oprócz Home/Training**
+
+Prompt: `prompts/base44-prompt-08-coach-ui-audit.txt`
+
+---
+
 ## Ostatnia aktualizacja
 
-2026-06-24 — Duplicate UserProfile bug + Coach Hub + coach lifecycle.
+2026-06-24 — Coach UI audit prompt + duplicate profile bug.
