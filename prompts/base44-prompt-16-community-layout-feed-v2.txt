@@ -1,14 +1,11 @@
-Airon Coach — don't touch Home/Training.
+Airon Coach — nie ruszaj Home i Training.
 
 ## 16 — Community layout
 
-**State:** outer shell ~86% wide ✅; inner feed still `max-w-[680px]` (~47%); Quick Actions rail duplicates sidebar nav.
+**Problem:** feed wąski (~połowa ekranu), Quick Actions powielają to co już jest w sidebarze.
 
-**Fix:**
-- Feed main column: flex-1, ≥60% viewport @1440px — drop 680px cap on primary column
-- Desktop Feed: remove Quick Actions duplicates (Find coach, Teams, Trainees — already in sidebar)
-- Keep composer + discovery rail (suggested coaches, teams snippet)
-- People tab: no error on default visit
-- Same wide grid on Feed/Teams/Messages tabs
-
-**Done when:** `ui-audit-logged-in` Community primary ≥60%, no redundant Quick Actions on desktop Feed.
+**Oczekiwane:**
+- Feed na desktopie sensownie wykorzystuje szerokość (nie wąska kolumna pośrodku pustki)
+- Bez redundantnych skrótów do Find coach / Teams / Trainees na Feedzie
+- Zakładki Community (Feed, Teams, Messages, People) spójny layout
+- People ładuje się bez errora

@@ -1,12 +1,11 @@
-Airon Coach — unified account, coach = capability on UserProfile, Trainee not Athlete. No mode switcher.
+Airon Coach — jedno konto, coach to capability (nie osobny tryb). Trainee, nie Athlete.
 
-## 14 — API / query storm
+## 14 — API / stabilność
 
-**Prod bugs:** burst `UserProfile` queries → 429; `classifyConversationTier` 404; `getWorkoutsWithSets` 500 on Home.
+**Problem:** przy normalnym klikaniu po apce lecą 429, Home czasem error na workoutach, w konsoli 404 na tier classification.
 
-**Fix:**
-- One cached canonical profile fetch per session (`created_by_id` + existing `yse`/`uu`). Kill parallel `created_by` email polls on same page load.
-- 429: dedupe in-flight, backoff retry, user-facing Retry — not infinite spinners.
-- Deploy `classifyConversationTier` OR silence caller. Fix `getWorkoutsWithSets` to return 200 + empty array when no data.
-
-**Done when:** 5-route nav in 30s → ≤2 UserProfile calls, no 429, Home no 500. Coach funnel still works.
+**Oczekiwane:**
+- Profil użytkownika ładuje się raz, bez lawiny tych samych requestów
+- Home działa bez 500 gdy brak workoutów
+- Brak widocznych błędów API przy zwykłej nawigacji
+- Coach Hub / zapis profilu coacha nadal działają

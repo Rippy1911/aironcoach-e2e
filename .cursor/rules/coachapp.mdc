@@ -104,26 +104,25 @@ behavior before assuming a bug is present.
 
 ## Prompt-writing rules
 
-- Start prompts with verification, not assumptions.
-- Do not tell the model to fix a bug unless the prompt also says to reproduce it first.
-- If a bug is no longer reproduced, instruct the model not to rewrite that area.
-- Ask for targeted fixes only:
-  - exact runtime error
-  - exact API 404
-  - exact stale copy
-  - exact permission gate
-- Do not ask for broad redesigns, large internal renames, schema changes, or new modes.
-- When requesting UI changes, follow the existing page pattern:
-  - use full-page edit only where the page already uses full-page edit
-  - use modal/side panel only where the feature already uses modal/side panel
-  - do not invent extra side entry forms or duplicate edit surfaces
-- Require a final report with:
-  - what was reproduced
-  - what was not reproduced
-  - files changed
-  - exact root cause
-  - verification result per route
-  - remaining risks/follow-ups
+### Base44 prompts (paste into connected app builder)
+
+Base44 is already wired to this app and knows its own codebase. Prompts for Base44 must be:
+
+- **Outcome-only:** what is broken in the UI/API and what the user should see instead.
+- **No implementation map:** do not name files, components, hooks, or minified bundle symbols.
+- **No “deploy function X”** unless describing a user-visible missing feature by symptom.
+- **Short:** Opus in Base44 can infer how to fix; avoid runbooks inside the prompt.
+- **Product constraints only:** unified account, coach = capability, Trainee not Athlete, no mode switcher.
+- End with: what to verify in the UI — not a list of changed files.
+
+Good: “`/Settings?tab=coach` should open the coach settings panel on cold load.”
+Bad: “Change `SettingsPage.tsx` and add `useSearchParams` for tab=coach.”
+
+### E2E repo / agent prompts (this repository)
+
+- Start with prod verification when unsure something is still broken.
+- Targeted fixes only; no broad redesigns.
+- Agent final reports may include files changed and scripts run — that is for this repo only, not Base44 paste text.
 
 ## Routes to verify for Community/account work
 

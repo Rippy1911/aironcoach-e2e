@@ -1,25 +1,19 @@
-Model: Opus 4.8 — implement all below on https://airon.coach. Unified account; coach = capability on UserProfile; Trainee not Athlete; no mode switcher. Phase 1 (canonical profile, Hub, lifecycle basics) already shipped. Verify on prod first; don't rewrite what works.
+Masz już pełny kontekst tej aplikacji — nie szukaj plików po naszych podpowiedziach, zmień to co trzeba u siebie.
+
+Airon Coach: jedno konto, coach = capability, Trainee nie Athlete, bez switchera trybów. Faza 1 (profil, hub, podstawy lifecycle) już działa — nie psuj.
 
 ---
 
-### 14 — API
-429 from duplicate `UserProfile` fetches — one cached query (`created_by_id` + `yse`/`uu`), dedupe + backoff. Deploy or guard `classifyConversationTier` 404. Fix `getWorkoutsWithSets` 500 → 200 empty.
+**14 — API:** 429 przy nawigacji, błędy na Home, śmieci w konsoli. Profil ładuje się stabilnie, Home OK bez workoutów.
 
-### 15 — Routing
-`/Settings?tab=coach` must work cold. `/MyFollows` → profile `?tab=follows`. Fix Messages/Teams false login wall.
+**15 — Routing:** `/Settings?tab=coach`, follows z menu, Messages/Teams bez fałszywego logout.
 
-### 16 — Community UI
-Inner feed still 680px — widen to ≥60% @1440px. Remove desktop Quick Actions that duplicate sidebar. Fix People tab errors.
+**16 — Community:** szerszy feed, bez Quick Actions duplikujących sidebar, People bez errora.
 
-### 17 — Coach funnel
-Specialty chips lost on re-save — fix form state. CreateCoachProfile: 2-col + preview. Services: create → archive → restore E2E. Settings coach = same data as wizard.
+**17 — Coach:** specjalizacje nie znikają po save; create coach z podglądem; Services create/archive/restore; Settings = te same dane.
 
-### 18 — Public coach card
-Directory + bare `/UserProfile?id=` must default tab `coach`. 2-col card layout. Copy link includes `&tab=coach`.
+**18 — Wizytówka:** publiczny coach domyślnie tab Coach; copy link na wizytówkę; sensowna szerokość karty.
 
-### 19 — Lifecycle
-Add Delete public coach data (typed DELETE). Consolidate Settings coach panel. Hub reactivate for deactivated coaches with saved data.
+**19 — Lifecycle:** delete public coach data (konto zostaje); jeden panel Coach w Settings; reactivate gdy dane zachowane.
 
----
-
-Report: files changed, checklist per item, screenshots for Community + public coach profile.
+Na koniec: krótko co naprawione + jak przetestować w UI (bez listy plików).

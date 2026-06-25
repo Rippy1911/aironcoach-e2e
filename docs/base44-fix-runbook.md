@@ -1,25 +1,11 @@
-# Base44 — faza 2 (prompty 14–19)
+# Base44 — faza 2
 
-**Dla Opus 4.8:** wklej jednym razem → `prompts/base44-opus-phase2-14-19.txt`  
-**Po jednym:** `prompts/base44-prompt-14` … `19` (krótkie, ~15 linii każdy)
+**Wklej do Base44 (ma kontekst apki — tylko opis problemu i oczekiwane zachowanie):**
 
-Faza 1 (07 + 09–13): DONE. Nie wklejaj ponownie.
+→ `prompts/base44-opus-phase2-14-19.txt` (wszystko naraz)
 
-## Kolejność
+Lub po jednym: `prompts/base44-prompt-14` … `19`
 
-| # | Plik | Co |
-|---|------|-----|
-| 14 | API 429, dead functions | |
-| 15 | Settings tab, MyFollows, auth routes | |
-| 16 | Community feed width | |
-| 17 | Coach form + Services E2E | |
-| 18 | Public coach default tab | |
-| 19 | Delete coach data + Settings UX | |
+**Nie pisz w promptach:** ścieżek plików, nazw funkcji z bundle, „zmień X w pliku Y” — Base44 sam wie gdzie.
 
-## Retest po publish
-
-```bash
-npm run audit:deploy
-TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
-TEST_PRO_EMAIL=... node scripts/ui-audit-logged-in.mjs
-```
+Faza 1 (09–13): done. Retest po publish: `npm run audit:deploy` + `qa-sweep.mjs`

@@ -1,13 +1,11 @@
-Airon Coach — public coach profile = business card.
+Airon Coach — publiczny profil coacha to wizytówka biznesowa.
 
-## 18 — Public coach default tab + card
+## 18 — Publiczny profil coacha
 
-**Bug:** Directory / `/UserProfile?id=<coach>` opens Overview; Coach tab last or inactive. Coach tab content narrow (~50%).
+**Problem:** z Coach Directory i z linku `/UserProfile?id=…` ląduję na Overview zamiast wizytówki coacha. Tab Coach wąski.
 
-**Fix:**
-- Public coach (`is_coach` + business name): default tab = `coach` unless `?tab=` explicit
-- Directory links + Copy profile link → `&tab=coach`
-- Coach tab: 2-col card `max-w-6xl` — hero, bio, specialties, offers, CTAs (Follow/Message); self gets Edit/Manage
-- Non-coach profiles: default `overview` unchanged
-
-**Done when:** Coach Directory click lands on Coach tab; card uses width properly.
+**Oczekiwane:**
+- Profil publicznego coacha domyślnie otwiera zakładkę Coach (wizytówka)
+- Link „kopiuj profil” prowadzi od razu na wizytówkę
+- Wizytówka: nazwa, bio, specjalizacje, oferty, CTA (follow/message); u siebie też edit/manage
+- Zwykły profil bez coacha — bez zmian, default Overview

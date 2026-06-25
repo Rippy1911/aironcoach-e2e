@@ -1,15 +1,13 @@
-Airon Coach — unified account, Trainee not Athlete.
+Airon Coach — jedno konto, Trainee nie Athlete.
 
-## 15 — Routing
+## 15 — Linki i trasy
 
-**Bugs:**
-- `/Settings?tab=coach` → loads Account, not Coach panel (click sub-nav works)
-- `/MyFollows` → empty/loading; menu Follows → same orphan
-- `/Messages`, `/Teams` → sometimes login wall while rest of app is authed
+**Problem:**
+- Wejście na `/Settings?tab=coach` nie pokazuje panelu coacha
+- `/MyFollows` pusty / loading zamiast follows
+- `/Messages` i `/Teams` czasem wyrzucają na login mimo że user jest zalogowany
 
-**Fix:**
-- Settings: sync `?tab=` and `#hash` on load + sub-nav click + back/forward
-- `/MyFollows` → redirect `/UserProfile?id=<self>&tab=follows`; update menu link
-- Messages/Teams: same auth bootstrap as Home — spinner while loading, no false redirect
-
-**Done when:** cold-load URLs above work logged in.
+**Oczekiwane:**
+- Deep linki do zakładek Settings działają po wklejeniu URL
+- Follows w menu prowadzą do follows na własnym profilu
+- Messages i Teams otwierają się jak reszta apki dla zalogowanego usera

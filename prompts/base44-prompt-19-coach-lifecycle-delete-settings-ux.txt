@@ -1,13 +1,11 @@
-Airon Coach — deactivate/delete coach ≠ delete account.
+Airon Coach — wyłączenie coacha ≠ usunięcie konta.
 
-## 19 — Lifecycle delete + Settings coach UX
+## 19 — Lifecycle coacha
 
-**Gap:** pause/deactivate/reactivate ✅ in bundle; **Delete public coach data** missing.
+**Problem:** brak bezpiecznego „usuń dane publiczne coacha”; ustawienia coacha rozrzucone.
 
-**Fix:**
-- Settings → Coach Profile: one panel — visibility, pause, deactivate, reactivate, danger zone
-- Delete public coach data: typed `DELETE` confirm → clear coach public fields, archive tiers, `is_coach=false`; keep account/workouts/messages/billing
-- Deactivated coach with saved data → Hub shows Reactivate, not "create profile first"
-- Nav: paused=hidden from directory; deactivated=hide Hub or show Reactivate CTA
-
-**Done when:** delete flow works on disposable test coach; Settings coach panel unified.
+**Oczekiwane:**
+- Pause / deactivate / reactivate działają jak opisane w produkcie
+- Nowe: usuń dane publiczne coacha — z potwierdzeniem (np. wpisanie DELETE); konto osobiste zostaje
+- Jeden panel Coach w Settings: widoczność, lifecycle, linki do edycji / hub / services
+- Po deactivate z zachowanymi danymi Hub pokazuje reaktywację, nie „stwórz profil od zera”
