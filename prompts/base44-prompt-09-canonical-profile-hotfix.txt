@@ -1,0 +1,185 @@
+Follow the existing Airon Coach architecture:
+- One unified account.
+- No coach/user mode switcher.
+- Coach is a capability stored on the same `UserProfile`.
+- Do not create a separate `CoachProfile` entity.
+
+# P0 HOTFIX — canonical self UserProfile is still wrong on prod
+
+This is a corrective follow-up to the previous duplicate profile task. The previous attempt did not fix prod.
+
+## Current prod verification
+
+Prod: `https://airon.coach`  
+Bundle seen by QA: `assets/index-BX4KRVl9.js`
+
+Automated QA results:
+
+```txt
+canonicalProfileHelper=false
+duplicateProfileHelpers=true
+```
+
+Live repro on both test accounts:
+
+| Account | My Profile opens | Coach create save |
+|---------|------------------|-------------------|
+| `lokistakontakt@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = `mkpiwecki` | tries to update same row, returns 403 |
+| `lokistastream@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = `mkpiwecki` | tries to update same row, returns 403 |
+
+API error:
+
+```txt
+403 Permission denied for update operation on UserProfile entity
+UserProfile/698867e38ffb4566bd59e048
+```
+
+This means the app is selecting someone else’s `UserProfile` as the logged-in user’s own profile.
+
+Do not mark this task complete until both test accounts above pass.
+
+---
+
+## Root cause to fix
+
+The app still has old “pick best profile” logic:
+
+```js
+UserProfile.filter({ created_by: email }, ..., 50)
+uu(rows, email)
+Fz(row) // coach-scoring / profile scoring
+```
+
+This is unsafe for “my profile” and coach save. `Fz()` can choose the most coach-like or most complete row, not the row owned by the authenticated user.
+
+For self-profile flows, never pick by coach score.
+
+---
+
+## Required implementation
+
+### 1. Add one canonical self-profile resolver
+
+Create or replace with a single helper used everywhere:
+
+```js
+async function getOrCreateCanonicalUserProfile(authUser) {
+  const userId = authUser?.id;
+  const email = authUser?.email;
+
+  // Prefer created_by_id exact match.
+  // Then created_by exact email match.
+  // If multiple rows exist, pick deterministic primary:
+  //   1. created_by_id === authUser.id
+  //   2. onboarding_completed true
+  //   3. newest updated_date
+  // Do NOT use coach score / Fz / directory rank.
+  // If zero rows, create one owned by this auth user.
+}
+```
+
+Important:
+- The helper must return a row owned by the logged-in auth user.
+- It must never return `mkpiwecki` for `lokistakontakt` or `lokistastream`.
+- It must be used by both read and write flows.
+
+### 2. Replace all self-profile uses
+
+Replace self-profile selection in:
+
+- `useMyProfile` / current user profile query
+- profile menu `My Profile` and `View my profile`
+- `CreateCoachProfile` save
+- Settings → Coach Profile create
+- onboarding / create user profile save
+- any `uu(rows, email)` used for “me”
+
+Allowed use of scoring:
+- public directory ranking
+- suggested coaches ranking
+
+Forbidden use:
+- determining the logged-in user’s own profile
+- deciding which row to update on coach create
+
+### 3. Coach create must update the canonical self row
+
+When `CreateCoachProfile` saves:
+
+```js
+const profile = await getOrCreateCanonicalUserProfile(authUser);
+await UserProfile.update(profile.id, coachPayload);
+```
+
+Expected:
+- No request to `UserProfile/698867e38ffb4566bd59e048` unless the logged-in user actually owns that row.
+- No 403.
+- After save, `My Profile` opens the same canonical row.
+
+### 4. Duplicate cleanup / merge
+
+Implement an admin-safe cleanup path for duplicate `UserProfile` rows:
+
+- Find duplicate rows by `created_by` and/or `created_by_id`.
+- Pick primary by `created_by_id === authUser.id`, then onboarding complete, then latest update.
+- Merge coach fields, billing fields, credits, avatar/name if missing.
+- Archive/delete/mark duplicates with `merged_into_id` if supported.
+- Log a concise report.
+
+If full migration is risky, add an immediate per-user repair for the logged-in user that prevents wrong row selection and update.
+
+---
+
+## Required retest before final answer
+
+Use both accounts:
+
+```txt
+lokistakontakt@gmail.com
+lokistastream@gmail.com
+```
+
+For each account:
+
+1. Login.
+2. Open profile menu → My Profile.
+3. Confirm it does NOT open `mkpiwecki`.
+4. Go to `/CreateCoachProfile`.
+5. Fill and save coach profile.
+6. Confirm save does not update `UserProfile/698867e38ffb4566bd59e048`.
+7. Confirm no 403.
+8. Confirm `/CoachBusinessHub` is no longer gated only because profile save failed.
+
+Expected final QA signals:
+
+```txt
+canonicalProfileHelper=true
+My Profile != mkpiwecki
+CreateCoachProfile save != 403
+No self-profile path uses Fz()/coach scoring
+```
+
+---
+
+## Stop conditions
+
+Stop and report instead of shipping if:
+
+- You cannot identify where `uu()` / `Fz()` is used for self-profile.
+- You cannot guarantee `CreateCoachProfile` updates the logged-in user’s own row.
+- You introduce a profile mode / coach mode switcher.
+- You create a separate coach account or separate `CoachProfile` entity.
+
+---
+
+## Final report required
+
+Return:
+
+1. Exact root cause in code.
+2. Files changed.
+3. List of all call sites replaced from `uu()` / `Fz()` to canonical self resolver.
+4. Duplicate rows found/merged for the test accounts.
+5. Network proof: coach save no longer calls `UserProfile/698867e38ffb4566bd59e048`.
+6. Screenshots or route proof for My Profile on both accounts.
+7. Test checklist with pass/fail.

@@ -131,11 +131,11 @@ Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 
 ## Priorytety następny task
 
-0. **P0-PROFILE** — duplicate UserProfile rows / zły profil (prompt 07) — **NAJPIERW, blokuje wszystko**
-1. **P0-COACH** — getCoachStats 404 / Hub dashboard (prompt 05) — dopiero po zielonym retest prompt 07
-2. **P0-UI** — Coach tab first + Services Archive/Delete + layout (prompt 08)
-3. **P0-MENU** — Online flyout + fałszywe chevrony (prompt 04)
-4. **P1-LIFECYCLE** — pause/deactivate/reactivate/delete coach (prompt 06)
+0. **P0-PROFILE** — `prompts/base44-prompt-09-canonical-profile-hotfix.txt` — **NAJPIERW, blokuje wszystko**
+1. **P0-COACH** — `prompts/base44-prompt-10-coach-hub-stats-after-canonical.txt` — dopiero po zielonym retest prompt 09
+2. **P0-UI** — `prompts/base44-prompt-11-coach-card-services-layout.txt`
+3. **P0-MENU** — `prompts/base44-prompt-12-profile-menu-flyout-chevrons.txt`
+4. **P1-LIFECYCLE** — `prompts/base44-prompt-13-coach-lifecycle-v2.txt`
 5. **P2** — Community dokończenie, MyFollows redirect, screenshoty
 
 ---
@@ -146,7 +146,7 @@ Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 Prod: airon.coach. Unified account, no profile mode.
 P0 BLOCKER: My Profile and coach create resolve to wrong UserProfile id=698867e38ffb4566bd59e048 (mkpiwecki) on lokistakontakt/lokistastream.
 Coach create via /CreateCoachProfile and Settings#coach → 403 Permission denied updating that wrong row.
-Next prompt MUST be prompts/base44-prompt-07-duplicate-profile-fix.txt. Do not start 05/08 until 07 retest passes.
+Next prompt MUST be prompts/base44-prompt-09-canonical-profile-hotfix.txt. Do not start 10/11 until 09 retest passes.
 Retest: node scripts/coach-create-probe.mjs && node scripts/qa-sweep.mjs.
 Runbook: docs/base44-fix-runbook.md
 ```
@@ -232,6 +232,13 @@ node scripts/qa-sweep.mjs
 **Bloker prod:** oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**.
 
 **Rerun 2026-06-25:** anonymous smoke PASS; bundle `assets/index-BX4KRVl9.js`; `canonicalProfileHelper=false`; `coachTabLast=true`; `archiveOfferLabel=false`; coach create nadal 403.
+
+**Nowa sekwencja promptów (używać teraz):**
+1. `prompts/base44-prompt-09-canonical-profile-hotfix.txt`
+2. `prompts/base44-prompt-10-coach-hub-stats-after-canonical.txt`
+3. `prompts/base44-prompt-11-coach-card-services-layout.txt`
+4. `prompts/base44-prompt-12-profile-menu-flyout-chevrons.txt`
+5. `prompts/base44-prompt-13-coach-lifecycle-v2.txt`
 
 ---
 

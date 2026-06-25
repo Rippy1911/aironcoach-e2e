@@ -1,0 +1,227 @@
+Follow Airon Coach architecture:
+- One unified account.
+- Coach is a capability on `UserProfile`.
+- No coach mode / user mode switcher.
+- No separate coach account.
+- Deactivating coach must not delete the user account.
+
+# Coach lifecycle — pause, deactivate, reactivate, delete public coach data
+
+## Prerequisites
+
+Only start after:
+
+1. Prompt 09 canonical profile passes.
+2. Prompt 10 Coach Hub works.
+3. Prompt 11 Services/profile card works enough to verify public visibility.
+
+If coach profile save is still broken, stop.
+
+---
+
+## Product model
+
+There are three lifecycle levels:
+
+| Level | Meaning | Account remains? | Public profile? | Data retained? |
+|-------|---------|------------------|-----------------|----------------|
+| Pause | Temporarily not accepting clients / hidden | Yes | Hidden or limited | Yes |
+| Deactivate coach | Turn off coach capability | Yes | Hidden | Yes |
+| Delete public coach data | Remove coach public/business data | Yes | Removed | No for coach data |
+
+Do not write “switch to user account”. Use:
+
+```txt
+Pause coach profile
+Deactivate coach profile
+Reactivate coach profile
+Delete public coach data
+```
+
+---
+
+## Level 1 — Pause
+
+Use existing fields if available:
+
+```js
+accepting_clients: false
+coach_profile_visibility: 'private' // or equivalent
+```
+
+Behavior:
+
+- User remains a coach.
+- Coach Hub remains accessible.
+- Services remain editable.
+- Directory hides or marks profile unavailable.
+- Public profile shows “Not accepting new clients” or is hidden depending on visibility setting.
+
+UI:
+
+```txt
+Pause coach profile
+Temporarily stop receiving client requests. You can resume anytime.
+```
+
+---
+
+## Level 2 — Deactivate coach capability
+
+Fields:
+
+```js
+is_coach: false
+coach_status: 'inactive'
+accepting_clients: false
+coach_profile_visibility: 'private'
+```
+
+Data retained:
+
+- bio
+- specialties
+- services
+- certifications
+- gallery
+- stats/history where relevant
+
+Behavior:
+
+- Sidebar/menu no longer shows Coach Hub as active capability, or shows Reactivate CTA where appropriate.
+- `/CoachBusinessHub` shows inactive/reactivate screen, not generic “create profile first” if data exists.
+- `/CreateCoachProfile` should prefill existing data and act as Reactivate, not blank create.
+- Public profile hides Coach tab or shows inactive state based on product choice.
+
+UI:
+
+```txt
+Deactivate coach profile?
+Your account, workouts, community profile and messages stay active.
+Your coach profile will be hidden and you will stop receiving coaching requests.
+You can reactivate later.
+```
+
+Confirmation required.
+
+---
+
+## Level 3 — Delete public coach data
+
+Danger zone only.
+
+Behavior:
+
+- Deletes/removes public coach fields.
+- Archives or deletes service tiers according to existing safe backend behavior.
+- Does not delete user account, workouts, community posts, messages, subscription.
+- Requires typed confirmation, e.g. `DELETE`.
+
+Fields to clear/archive:
+
+- coach business/name/alias if coach-only
+- coach bio/headline
+- specialties
+- certifications
+- gallery/cover/video
+- pricing/training mode
+- public coach visibility
+- services/tiers archived or deleted as supported
+
+Keep:
+
+- auth account
+- personal profile
+- subscription
+- workouts/training data
+- community identity
+- messages
+
+---
+
+## Reactivate
+
+If coach data exists:
+
+```txt
+Reactivate coach profile
+```
+
+Behavior:
+
+- Restore `is_coach=true`.
+- Set `coach_status='active'` or approved equivalent.
+- Let user review/edit retained fields before publishing.
+- Do not force blank setup.
+
+If coach data was deleted:
+
+- Start fresh `/CreateCoachProfile`.
+
+---
+
+## UI placement
+
+Settings → Coach Profile:
+
+```txt
+Status card:
+  Active / Paused / Inactive
+  Visibility
+  Accepting clients
+
+Actions:
+  Pause / Resume
+  Deactivate coach profile
+
+Danger zone:
+  Delete public coach data
+```
+
+Coach Hub:
+
+- Active → dashboard.
+- Paused → dashboard + paused banner.
+- Inactive → reactivate CTA.
+
+---
+
+## Required retest
+
+Use a test account with working coach profile.
+
+1. Create coach profile.
+2. Verify public profile / directory visible.
+3. Pause.
+4. Verify not accepting clients / hidden behavior.
+5. Resume.
+6. Deactivate.
+7. Verify account still works and Coach Hub shows reactivate.
+8. Reactivate.
+9. Verify data is retained.
+10. Delete public coach data.
+11. Verify account remains and coach public data is gone.
+
+---
+
+## Stop conditions
+
+Stop if:
+
+- Canonical profile is wrong.
+- Deactivation deletes account data.
+- You introduce profile/user/coach mode switching.
+- You cannot distinguish pause vs deactivate vs delete.
+
+---
+
+## Final report required
+
+Return:
+
+1. Fields changed for pause/deactivate/reactivate/delete.
+2. Screenshots for Settings status card and each confirmation modal.
+3. Public profile/directory behavior before and after.
+4. Data retention checklist.
+5. Files changed.
+6. Remaining risks.
