@@ -115,7 +115,15 @@ if (await sebLink.isVisible({ timeout: 5000 }).catch(() => false)) {
 
 // Menu flyout
 await go('/Home', null);
-await page.locator(`text=${USER_SLUG}`).first().click({ force: true });
+const profileTrigger = page.locator(`text=${USER_SLUG}`).first();
+if (await profileTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
+  await profileTrigger.click({ force: true });
+} else {
+  const onlineTrigger = page.getByText('Online', { exact: true }).first();
+  if (await onlineTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await onlineTrigger.click({ force: true });
+  }
+}
 await page.waitForTimeout(1500);
 const online = page.getByText('Online', { exact: true }).first();
 if (await online.isVisible()) {
@@ -128,6 +136,7 @@ if (await online.isVisible()) {
 
 // Dedupe API errors
 const apiUnique = [...new Map(apiErrors.map((e) => [`${e.status}:${e.url}`, e])).values()];
+let reportedRateLimit = false;
 for (const e of apiUnique) {
   if (e.status === 403 && e.url.includes('698867e38ffb4566bd59e048')) {
     add('P0', 'CreateCoachProfile', 'Save updates wrong UserProfile (mkpiwecki)', `403 Permission denied on entity 698867e38ffb4566bd59e048 for ${EMAIL}`, '21-after-save-attempt.png');
@@ -142,7 +151,11 @@ for (const e of apiUnique) {
     add('P2', 'API', 'getWorkoutsWithSets 500', 'Home dashboard workouts fail');
   }
   if (e.status === 429) {
-    add('P1', 'API', 'Rate limit 429 on UserProfile fetches', 'Burst queries on created_by email — retries spam API');
+    if (!reportedRateLimit) {
+      const count = apiUnique.filter((x) => x.status === 429).length;
+      add('P1', 'API', 'Rate limit 429 on repeated entity fetches', `${count} unique 429 responses during one sweep; burst profile/team/workout queries spam API`);
+      reportedRateLimit = true;
+    }
   }
 }
 

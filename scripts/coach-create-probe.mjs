@@ -171,7 +171,15 @@ if (!/create a coach profile first/i.test(results.pages.services?.text || '')) {
 // ── Menu + My Profile ────────────────────────────────────────────────────────
 await page.goto(`${BASE}/Home`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(4000);
-await page.locator(`text=${USER_SLUG}`).first().click({ force: true });
+const profileTrigger = page.locator(`text=${USER_SLUG}`).first();
+if (await profileTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
+  await profileTrigger.click({ force: true });
+} else {
+  const onlineTrigger = page.getByText('Online', { exact: true }).first();
+  if (await onlineTrigger.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await onlineTrigger.click({ force: true });
+  }
+}
 await page.waitForTimeout(1500);
 results.pages.menu = await pageText(800);
 await snap('27-menu.png');

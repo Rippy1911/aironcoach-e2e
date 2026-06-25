@@ -4,6 +4,11 @@ Follow the established unified-account architecture and capability-based coach U
 
 Przebudowa UX/UI coach-facing ekranów + pełny audyt layoutu (poza Home i Training).
 
+> **Prerequisite:** prompt 07 must be fixed first. Current prod (2026-06-25)
+> cannot create a coach profile on test accounts because the app updates the
+> wrong UserProfile (`mkpiwecki`) and gets 403. Verify `node scripts/coach-create-probe.mjs`
+> is green before implementing Services/Hub self-coach flows.
+
 **Zgłoszenia użytkownika (screenshots prod):**
 1. Profil coacha — tab **Coach** jest ostatni (po Overview/Activity). Dla coacha to ma być **wizytówka = pierwszy tab, domyślny**.
 2. Services — brak przycisku **Usuń** na ofertach (tylko Edit).

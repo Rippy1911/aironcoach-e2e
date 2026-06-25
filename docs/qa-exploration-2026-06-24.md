@@ -6,6 +6,16 @@
 **Metoda:** Playwright (logged-in), tworzenie profilu coacha, przechodzenie flow, monitoring API  
 **Screenshoty:** `test-results/coach-explore/` (gitignored)
 
+**Rerun 2026-06-25 02:56 UTC:** wyniki bez zmian dla P0:
+- anonymous smoke: **PASS**
+- `npm run typecheck`: **PASS**
+- prod bundle: `assets/index-BX4KRVl9.js`
+- `canonicalProfileHelper=false`
+- Create coach profile: nadal **403** na `UserProfile/698867e38ffb4566bd59e048`
+- My Profile: nadal **mkpiwecki**
+- `archiveOfferLabel=false`, `coachTabLast=true`
+- `scripts/qa-sweep.mjs`: 5 findings (P0 My Profile, P0 Online flyout, P2 lifecycle, P2 Community rail, P2 `classifyConversationTier` 404)
+
 ---
 
 ## Executive summary

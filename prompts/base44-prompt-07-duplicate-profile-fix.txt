@@ -2,6 +2,24 @@ Follow the established unified-account architecture and capability-based coach U
 
 ## P0 BUG — Zły profil po zapisie coacha / My Profile pokazuje inne dane niż tworzę
 
+### Latest prod verification (2026-06-25)
+
+Logged-in Playwright on both test accounts:
+
+| Account | My Profile result | Coach create result |
+|---------|-------------------|---------------------|
+| `lokistastream@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = **mkpiwecki** | `403 Permission denied` updating that same UserProfile row |
+| `lokistakontakt@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = **mkpiwecki** | `403 Permission denied` updating that same UserProfile row |
+
+This means the coach funnel is currently blocked before Hub/Services can be tested. Fix this prompt first, then retest with:
+
+```bash
+node scripts/coach-create-probe.mjs
+node scripts/qa-sweep.mjs
+```
+
+---
+
 ### Odtworzenie (zgłoszone przez użytkownika)
 
 - Wiele kont testowych na prod

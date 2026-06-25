@@ -2,6 +2,11 @@ Follow the established unified-account architecture and capability-based coach U
 
 ## P0 BUG — Coach Hub pokazuje „You're not a coach yet" po utworzeniu profilu coacha
 
+> **Current blocker (2026-06-25):** do not start this before prompt 07 passes.
+> On current prod test accounts, coach profile creation fails first because canonical
+> UserProfile resolves to `mkpiwecki` and save returns 403. After prompt 07 is fixed,
+> rerun `scripts/coach-create-probe.mjs`; only then verify `getCoachStats`.
+
 ### Odtworzenie (potwierdzone na prod przez użytkownika + analiza kodu)
 
 1. Użytkownik tworzy profil coacha (Create coach profile) → Save

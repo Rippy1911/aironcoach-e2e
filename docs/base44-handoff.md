@@ -131,14 +131,12 @@ Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 
 ## Priorytety następny task
 
-0. **P0-PROFILE** — duplicate UserProfile rows / zły profil (prompt 07) — **NAJPIERW**
-0b. **P0-COACH** — getCoachStats 404 (prompt 05)
-0c. **Coach lifecycle** (prompt 06)
-1. **P0-B** — napraw Online flyout + fałszywe chevrony
-2. **P1** — Profile Hub kompletny + redirect MyFollows
-3. **P2** — Community dokończenie (content-start, Invite card)
-4. **P3** — Referral E2E / Testing Agent scenario
-5. **P4** — Screenshoty
+0. **P0-PROFILE** — duplicate UserProfile rows / zły profil (prompt 07) — **NAJPIERW, blokuje wszystko**
+1. **P0-COACH** — getCoachStats 404 / Hub dashboard (prompt 05) — dopiero po zielonym retest prompt 07
+2. **P0-UI** — Coach tab first + Services Archive/Delete + layout (prompt 08)
+3. **P0-MENU** — Online flyout + fałszywe chevrony (prompt 04)
+4. **P1-LIFECYCLE** — pause/deactivate/reactivate/delete coach (prompt 06)
+5. **P2** — Community dokończenie, MyFollows redirect, screenshoty
 
 ---
 
@@ -146,11 +144,11 @@ Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 
 ```
 Prod: airon.coach. Unified account, no profile mode.
-P0 BUG: Coach profile save OK but Coach Hub shows "not a coach" — getCoachStats returns 404 Deployment does not exist.
-Done: referral capture, streak opt-in, getMyFollows fix, Feed P0 anti-duplikacja.
-Also: Online flyout clipped; fake chevrons on My Profile/Coach Hub menu.
-Next: prompts/base44-prompt-05-coach-hub-getCoachStats.txt (P0), then prompt 04.
-Handoff: docs/base44-handoff.md
+P0 BLOCKER: My Profile and coach create resolve to wrong UserProfile id=698867e38ffb4566bd59e048 (mkpiwecki) on lokistakontakt/lokistastream.
+Coach create via /CreateCoachProfile and Settings#coach → 403 Permission denied updating that wrong row.
+Next prompt MUST be prompts/base44-prompt-07-duplicate-profile-fix.txt. Do not start 05/08 until 07 retest passes.
+Retest: node scripts/coach-create-probe.mjs && node scripts/qa-sweep.mjs.
+Runbook: docs/base44-fix-runbook.md
 ```
 
 ---
@@ -220,6 +218,7 @@ Prompt: `prompts/base44-prompt-08-coach-ui-audit.txt`
 
 Pełny raport: **`docs/ui-audit-2026-06-24.md`**  
 **QA exploration (logged-in, coach create):** **`docs/qa-exploration-2026-06-24.md`**
+**Prompt runbook:** **`docs/base44-fix-runbook.md`**
 
 Narzędzia:
 ```bash
@@ -232,8 +231,10 @@ node scripts/qa-sweep.mjs
 
 **Bloker prod:** oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**.
 
+**Rerun 2026-06-25:** anonymous smoke PASS; bundle `assets/index-BX4KRVl9.js`; `canonicalProfileHelper=false`; `coachTabLast=true`; `archiveOfferLabel=false`; coach create nadal 403.
+
 ---
 
 ## Ostatnia aktualizacja
 
-2026-06-24 — QA exploration + UI audit + duplicate profile blocker potwierdzony live.
+2026-06-25 — rerun testów + runbook promptów; duplicate profile blocker nadal aktywny.
