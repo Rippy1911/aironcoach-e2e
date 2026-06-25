@@ -218,18 +218,22 @@ Prompt: `prompts/base44-prompt-08-coach-ui-audit.txt`
 
 ## UI Audit (agent, 2026-06-24)
 
-Pełny raport: **`docs/ui-audit-2026-06-24.md`**
+Pełny raport: **`docs/ui-audit-2026-06-24.md`**  
+**QA exploration (logged-in, coach create):** **`docs/qa-exploration-2026-06-24.md`**
 
 Narzędzia:
 ```bash
-node scripts/ui-audit-prod.mjs      # bundle: taby, archive, max-w
-node scripts/ui-audit-viewport.mjs  # viewport 1440px (anon)
+node scripts/ui-audit-prod.mjs
+node scripts/ui-audit-viewport.mjs
+node scripts/ui-audit-logged-in.mjs
+node scripts/coach-create-probe.mjs   # wypełnia + zapisuje coach profile
+node scripts/qa-sweep.mjs
 ```
 
-**Wynik:** 5× P0, 6× P1 layout; logged-in screenshoty wymagają `e2e/.auth/pro.json`.
+**Bloker prod:** oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**.
 
 ---
 
 ## Ostatnia aktualizacja
 
-2026-06-24 — UI audit raport + Coach UI audit prompt + duplicate profile bug.
+2026-06-24 — QA exploration + UI audit + duplicate profile blocker potwierdzony live.
