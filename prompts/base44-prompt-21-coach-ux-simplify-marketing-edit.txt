@@ -1,0 +1,79 @@
+Masz kontekst apki — zmień u siebie co trzeba.
+
+Airon Coach: jedno konto, coach = capability. Trainee nie Athlete. Aplikacja ma być **wygodna i intuicyjna** — mniej rozproszonych miejsc na to samo.
+
+---
+
+## Problem (prod, 2026-06-25)
+
+1. **Własny profil — nie da się sensownie edytować**
+   - Domyślnie włączony **Guest view** — user myśli że nic nie może zmienić.
+   - Po przełączeniu na Edit mode nadal brak ołówków / inline edit przy polach (prompt 20 niedokończony).
+   - Jest tylko ogólny „Edit profile” — niejasne dokąd prowadzi.
+
+2. **Coach Hub — mylące „Edit coach profile”**
+   - Przycisk **Edit coach profile** na Hub prowadzi do **Settings → Coach** — to nie to.
+   - Najbogatszy edytor wizytówki jest w **Marketing** (`/CoachMarketing`) — tam powinien iść każdy „edytuj profil coacha”.
+
+3. **Za dużo dróg do tego samego**
+   - Settings coach, CreateCoachProfile, Marketing, Hub — user gubi się.
+   - `/Marketing` nie istnieje (404); działa **CoachMarketing** — sidebar musi być spójny.
+
+4. **Oferty z Services nadal niewidoczne na tab Coach profilu** (jeśli nadal tak jest — napraw).
+
+---
+
+## Oczekiwane zachowanie
+
+### Własny profil (coach i zwykły user u siebie)
+
+- **Domyślnie Edit mode** — ołówki / możliwość edycji od razu po wejściu na swój profil.
+- **Guest view** = opcjonalny toggle podglądu (jak widzi gość), nie tryb startowy.
+- Przy każdym edytowalnym polu: **ikona ołówka** → edycja na miejscu (jak w prompt 20).
+- Jeśli pole jest złożone (cała wizytówka coacha): ołówek lub przycisk **„Edytuj w Marketing”** → `/CoachMarketing` z focusem na sekcję.
+
+### Coach Hub — jeden jasny flow edycji
+
+| Akcja na Hub | Dokąd |
+|--------------|--------|
+| Edit coach profile / Edytuj profil | **CoachMarketing** (nie Settings) |
+| Open coach profile | UserProfile + tab Coach (Guest view OFF = edit mode) |
+| Preview / Guest view | UserProfile w trybie podglądu gościa |
+| Services / oferty | CoachServices |
+
+Hub = **dashboard** (statystyki, plan, skróty). **Edycja treści wizytówki = Marketing.**
+
+### Marketing = główne studio coacha
+
+- CoachMarketing to **jedno miejsce** na: zdjęcie, bio, specjalizacje, business info, widoczność, checklistę kompletności.
+- Zmiany z Marketingu **od razu** widać na publicznym profilu (obietnica już w copy — ma działać).
+- Settings → Coach Profile: albo link „Otwórz Marketing”, albo tylko lifecycle (pause/deactivate) — **nie duplikuj** pełnego formularza.
+
+### Uproszczenie nawigacji (coach)
+
+User coach powinien rozumieć:
+- **Profil** = jak wyglądam (podgląd + szybkie ołówki)
+- **Marketing** = pełna edycja wizytówki
+- **Hub** = biznes / statystyki
+- **Services** = oferty
+
+Usuń lub przekieruj zbędne duplikaty (np. CreateCoachProfile tylko dla **pierwszego** setupu, potem edycja → Marketing).
+
+### Oferty
+
+- Aktywne oferty z Services na tab Coach profilu.
+- Ołówek na ofercie → szybka edycja lub „Manage in Services”.
+
+### Przy tworzeniu coacha
+
+- Pytanie o publiczność, **default zaznaczony (publiczny)** — bez zmian.
+
+---
+
+## Test w UI
+
+1. Wejdź na swój profil → od razu **Edit mode**, widać ołówki (nie Guest view).
+2. Hub → Edit coach profile → **CoachMarketing**, nie Settings.
+3. Zmiana w Marketing → widać na profilu.
+4. Oferta w Services → widać na profilu Coach tab.
+5. Sidebar Marketing → zawsze `/CoachMarketing`, nigdy 404.
