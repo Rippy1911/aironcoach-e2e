@@ -25,7 +25,9 @@ test('FatSecret diagnostic — sources per query', async ({ page }) => {
       const res = await api.invokeFunction<any>('searchProducts', { query: q, locale });
       const products = res?.products || [];
       const sources = Array.from(new Set(products.map((p: any) => p.source)));
-      const sample = products[0] ? `${products[0].name} (${products[0].source}, ${products[0].calories_per_100g}kcal)` : '—';
+      const sample = products[0]
+        ? `${products[0].name} (${products[0].source}, ${products[0].calories_per_100g ?? '?'}kcal)`
+        : '—';
       rows.push(`${q} | ${locale} | ok | ${products.length} | ${sources.join('+') || 'none'} | ${sample}`);
     } catch (e: any) {
       rows.push(`${q} | ${locale} | ERR | - | - | ${String(e.message || e).slice(0, 120)}`);
