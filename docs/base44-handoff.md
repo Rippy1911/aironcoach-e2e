@@ -216,6 +216,20 @@ Prompt: `prompts/base44-prompt-08-coach-ui-audit.txt`
 
 ---
 
+## UI Audit (agent, 2026-06-24)
+
+Pełny raport: **`docs/ui-audit-2026-06-24.md`**
+
+Narzędzia:
+```bash
+node scripts/ui-audit-prod.mjs      # bundle: taby, archive, max-w
+node scripts/ui-audit-viewport.mjs  # viewport 1440px (anon)
+```
+
+**Wynik:** 5× P0, 6× P1 layout; logged-in screenshoty wymagają `e2e/.auth/pro.json`.
+
+---
+
 ## Ostatnia aktualizacja
 
-2026-06-24 — Coach UI audit prompt + duplicate profile bug.
+2026-06-24 — UI audit raport + Coach UI audit prompt + duplicate profile bug.
