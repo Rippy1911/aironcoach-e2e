@@ -1,165 +1,17 @@
-Follow Airon Coach architecture:
-- One UserProfile per user; coach fields on same row.
-- No separate CoachProfile entity.
-- No coach/user mode switcher.
+Airon Coach — one UserProfile row, coach fields on same row.
 
-# P1 — Coach funnel polish: form state, layout, Services E2E
+## 17 — Coach form + Services E2E
 
-## Prerequisites
+**Bugs:**
+- CreateCoachProfile: specialty chips lost on 2nd save ("Select at least one specialty")
+- Form still narrow (`max-w-sm`); no desktop preview
+- Services: archive in bundle but create→archive→restore not verified E2E
+- Settings Coach panel vs `/CreateCoachProfile` show inconsistent data
 
-Canonical profile works. Coach Hub and Services unlock for test coach account.
+**Fix:**
+- Chips bound to form state — survive validation/refetch/reload
+- Desktop: 2-col form + live preview card, `max-w-5xl/6xl`
+- Services: full flow create offer → list → archive → archived section → restore (use `manageCoachServiceTier`)
+- Settings Coach: same data as wizard + "Edit full coach profile" link
 
-Verified account: `lokistakontakt@gmail.com` — Loki Stream Coach, Hub loads.
-
----
-
-## Current prod issues
-
-### BUG — Specialty chips lost on second save
-
-On `/CreateCoachProfile`:
-
-```txt
-1. Fill form + select specialties (strength, nutrition…)
-2. First save may succeed or show validation
-3. Second submit: "Select at least one specialty" even after re-clicking chips
-```
-
-Form state / controlled chips desync after failed or partial save.
-
-### BUG — CreateCoachProfile still narrow on inner form
-
-Bundle fragment still has `max-w-sm` in CreateCoachProfile area.
-
-Logged-in: outer shell ~86%, but form feels like a narrow single column without preview.
-
-### BUG — Services offer flow not verified E2E
-
-Hub/Services unlock, but QA has not confirmed:
-
-```txt
-Create coaching offer → save → appears in list → Archive → Archived section → Restore
-```
-
-Archive label exists in bundle — full flow must work in UI.
-
-### BUG — Two coach activation entry points inconsistent
-
-- `/CreateCoachProfile` — full wizard
-- Settings → Coach Profile — minimal fields
-
-Both must edit the **same canonical row** and show consistent data after save.
-
----
-
-## Part A — Fix specialty / form state
-
-Requirements:
-
-- Selected specialties persist across validation errors and re-submit
-- Chip component value bound to form state that survives `myProfile` refetch
-- After successful save, form shows current DB values — not empty chips
-- Do not reset entire form on non-fatal API errors
-
-Add regression test mentally:
-
-```txt
-Select 2 specialties → save → reload page → 2 specialties still selected
-```
-
----
-
-## Part B — CreateCoachProfile layout
-
-Desktop (lg+):
-
-```txt
-Left:  form sections (identity, offer, visibility)
-Right: live preview card ("how athletes see you")
-```
-
-Target:
-
-```txt
-max-w-5xl or max-w-6xl form shell
-NOT max-w-sm single column on desktop
-```
-
-Mobile: stacked single column OK.
-
-Preview shows:
-
-- Coach name / alias
-- Headline
-- Specialties chips
-- Location / training mode if set
-- Profile completeness %
-
----
-
-## Part C — Services offer E2E
-
-On `/CoachServices` for an active coach:
-
-### Create offer
-
-```txt
-Create coaching offer → fill title, price, description → save
-Toast: success
-Card appears in "Your offers"
-```
-
-### Archive
-
-```txt
-Card menu → Archive
-Toast: Offer archived
-Moves to "Archived offers (N)"
-Hidden from public coach profile
-```
-
-### Restore
-
-```txt
-Archived section → Restore
-Back in active offers
-```
-
-Use existing `manageCoachServiceTier` backend if present — wire UI completely.
-
----
-
-## Part D — Settings coach entry consistency
-
-Settings → Coach Profile must show same coach identity as `/CreateCoachProfile`:
-
-- business name
-- specialties
-- visibility
-- link: "Edit full coach profile" → `/CreateCoachProfile`
-
----
-
-## Acceptance checklist
-
-```txt
-[ ] Specialties survive double-save on CreateCoachProfile
-[ ] CreateCoachProfile desktop uses 2-column layout with preview
-[ ] Create offer → visible in Services list
-[ ] Archive offer → archived section
-[ ] Restore offer → active again
-[ ] Settings coach panel matches CreateCoachProfile data
-[ ] No 403 on save for test account
-```
-
----
-
-## Retest
-
-```bash
-TEST_PRO_EMAIL=lokistakontakt@gmail.com node scripts/coach-create-probe.mjs
-```
-
-Extend probe if needed to create + archive one test offer.
-
-Report changed form components and Services card actions.
+**Done when:** `coach-create-probe.mjs` passes; one test offer archived and restored.

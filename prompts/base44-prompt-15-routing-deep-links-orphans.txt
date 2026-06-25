@@ -1,129 +1,15 @@
-Follow Airon Coach architecture:
-- Unified account, no mode switcher.
-- Trainee (not Athlete) in copy.
-- Coach capability unchanged.
+Airon Coach — unified account, Trainee not Athlete.
 
-# P1 — Routing deep links, orphan routes, auth persistence
+## 15 — Routing
 
-## Prerequisites
+**Bugs:**
+- `/Settings?tab=coach` → loads Account, not Coach panel (click sub-nav works)
+- `/MyFollows` → empty/loading; menu Follows → same orphan
+- `/Messages`, `/Teams` → sometimes login wall while rest of app is authed
 
-Prompt 14 recommended but not blocking. Canonical profile must still work.
+**Fix:**
+- Settings: sync `?tab=` and `#hash` on load + sub-nav click + back/forward
+- `/MyFollows` → redirect `/UserProfile?id=<self>&tab=follows`; update menu link
+- Messages/Teams: same auth bootstrap as Home — spinner while loading, no false redirect
 
----
-
-## Current prod issues
-
-### BUG — `Settings?tab=coach` ignored
-
-```txt
-URL: /Settings?tab=coach
-Actual: Account / Trainee Profile form (Fitness Goal, Sports)
-Expected: Coach Profile settings panel
-```
-
-Clicking sub-nav button **Coach Profile** works — only deep link / query param is broken.
-
-### BUG — `/MyFollows` orphan route
-
-```txt
-/MyFollows → "Loading…" or nearly empty shell
-```
-
-Expected:
-
-```txt
-Redirect → /UserProfile?id=<canonical_self_id>&tab=follows
-```
-
-Menu row **Follows & followers** should use the same destination — not `/MyFollows`.
-
-### BUG — `/Messages` and `/Teams` sometimes hit login wall
-
-During QA sweeps, direct navigation to `/Messages` or `/Teams` redirected to login even when Home/Community were authenticated in the same session.
-
-Likely causes:
-
-- Route guard reads stale auth before hydration
-- Storage state not shared on these routes
-- `from_url` redirect loop after partial 429 failures
-
----
-
-## Required fixes
-
-### A — Settings tab sync
-
-Support all of:
-
-```txt
-/Settings?tab=coach
-/Settings?tab=account
-/Settings?tab=billing
-/Settings#coach
-```
-
-Rules:
-
-- On mount: read `tab` query param OR hash → activate correct sub-panel
-- On sub-nav click: update URL (`?tab=coach` or `#coach`) without full reload
-- Browser back/forward must switch tabs correctly
-- External links from Coach Hub / emails must land on Coach Profile panel
-
-### B — MyFollows deprecation
-
-Option 1 (preferred):
-
-```js
-// MyFollows page
-redirect to `/UserProfile?id=${canonicalSelfId}&tab=follows`
-```
-
-Option 2: render embedded follows tab content at `/MyFollows` using same component as profile — but redirect is simpler.
-
-Update menu:
-
-```txt
-Follows & followers → /UserProfile?id=<self>&tab=follows
-```
-
-Remove chevron if present. No submenu.
-
-### C — Auth persistence on Messages / Teams
-
-- `/Messages`, `/Teams`, `/Trainees` must use same auth provider as `/Home`
-- Do not redirect to login while auth bootstrap is still loading — show app shell + spinner
-- If session expired, redirect once with `from_url` — no loop
-
----
-
-## UI copy (unchanged)
-
-- **Trainee Profile** in Settings sub-nav
-- **Coach Profile** in Settings sub-nav
-- No Athlete wording
-
----
-
-## Acceptance checklist
-
-```txt
-[ ] /Settings?tab=coach opens Coach Profile panel on cold load
-[ ] /Settings?tab=coach works after paste in new tab
-[ ] Sub-nav click updates URL
-[ ] /MyFollows redirects to profile follows tab
-[ ] Menu Follows & followers goes to profile?tab=follows
-[ ] /Messages loads inbox when logged in (no login wall)
-[ ] /Teams loads when logged in
-```
-
----
-
-## Retest
-
-```bash
-TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
-```
-
-Manual: paste `/Settings?tab=coach` in incognito after login.
-
-Report changed router files and before/after URLs.
+**Done when:** cold-load URLs above work logged in.

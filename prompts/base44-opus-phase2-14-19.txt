@@ -1,0 +1,25 @@
+Model: Opus 4.8 — implement all below on https://airon.coach. Unified account; coach = capability on UserProfile; Trainee not Athlete; no mode switcher. Phase 1 (canonical profile, Hub, lifecycle basics) already shipped. Verify on prod first; don't rewrite what works.
+
+---
+
+### 14 — API
+429 from duplicate `UserProfile` fetches — one cached query (`created_by_id` + `yse`/`uu`), dedupe + backoff. Deploy or guard `classifyConversationTier` 404. Fix `getWorkoutsWithSets` 500 → 200 empty.
+
+### 15 — Routing
+`/Settings?tab=coach` must work cold. `/MyFollows` → profile `?tab=follows`. Fix Messages/Teams false login wall.
+
+### 16 — Community UI
+Inner feed still 680px — widen to ≥60% @1440px. Remove desktop Quick Actions that duplicate sidebar. Fix People tab errors.
+
+### 17 — Coach funnel
+Specialty chips lost on re-save — fix form state. CreateCoachProfile: 2-col + preview. Services: create → archive → restore E2E. Settings coach = same data as wizard.
+
+### 18 — Public coach card
+Directory + bare `/UserProfile?id=` must default tab `coach`. 2-col card layout. Copy link includes `&tab=coach`.
+
+### 19 — Lifecycle
+Add Delete public coach data (typed DELETE). Consolidate Settings coach panel. Hub reactivate for deactivated coaches with saved data.
+
+---
+
+Report: files changed, checklist per item, screenshots for Community + public coach profile.
