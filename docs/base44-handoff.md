@@ -108,7 +108,9 @@ Bez chevron: My Profile, Coach Hub, Follows, Settings, Manage plan — direct na
 |------|------------|
 | `docs/base44-handoff.md` | Ten plik — kontekst |
 | `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | Coach Hub getCoachStats 404 |
-| `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt` | **Coach lifecycle** — pause / deactivate / reactivate / delete |
+| `prompts/base44-prompt-07-duplicate-profile-fix.txt` | **P0** — duplicate UserProfile / zły profil po save coach |
+| `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt` | Coach lifecycle — pause / deactivate / reactivate |
+| `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | Coach Hub getCoachStats 404 |
 | `prompts/base44-prompt-04-menu-profile-hub.txt` | Menu flyout + Profile Hub |
 
 ---
@@ -128,8 +130,9 @@ Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 
 ## Priorytety następny task
 
-0. **P0-COACH** — getCoachStats 404 + Coach Hub empty state (prompt 05)
-0b. **Coach lifecycle** — pause / deactivate / reactivate (prompt 06)
+0. **P0-PROFILE** — duplicate UserProfile rows / zły profil (prompt 07) — **NAJPIERW**
+0b. **P0-COACH** — getCoachStats 404 (prompt 05)
+0c. **Coach lifecycle** (prompt 06)
 1. **P0-B** — napraw Online flyout + fałszywe chevrony
 2. **P1** — Profile Hub kompletny + redirect MyFollows
 3. **P2** — Community dokończenie (content-start, Invite card)
@@ -180,6 +183,28 @@ API error jest myląco mapowany na „nie jesteś coachem".
 
 ---
 
+## P0 BUG — Duplicate UserProfile rows (2026-06-24)
+
+### Symptom
+Po zapisie profilu coacha user widzi **inny profil** niż edytował (np. Marek Nowak). Wiele kont testowych na prod.
+
+### Root cause (analiza bundle)
+- `UserProfile.filter({ created_by: email }, limit 50)` — **wiele wierszy na jeden email**
+- `uu()` wybiera profil przez **Fz() scoring** który faworyzuje coach (+1M pkt) → bierze „najbardziej coach" wiersz, niekoniecznie właściwy
+- `CreateCoachProfile` + `CreateUserProfile` oba: `uu()` → update LUB create — mogą tworzyć duplikaty
+- `bRe()` ma status `ambiguous` przy wielu coach rows — problem znany w kodzie, nieobsłużony w UI
+- My Profile → `/UserProfile?id=${canonicalProfile.id}` — jeśli canonical źle wybrany, widać zły profil
+
+### Fix
+1. Jeden UserProfile per user (merge duplikatów)
+2. Zastąpić `uu()`/`Fz()` dla my profile → `getCanonicalUserProfile` (by created_by_id, nie coach score)
+3. Coach save na tym samym wierszu co personal
+4. My Profile zawsze self canonical id
+
+**Prompt:** `prompts/base44-prompt-07-duplicate-profile-fix.txt`
+
+---
+
 ## Ostatnia aktualizacja
 
-2026-06-24 — Coach Hub getCoachStats 404 bug + Task 4 P0 + menu UX bugs.
+2026-06-24 — Duplicate UserProfile bug + Coach Hub + coach lifecycle.
