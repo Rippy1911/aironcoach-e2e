@@ -55,7 +55,7 @@ export default defineConfig({
       // Same storage state + DB user: parallel specs wipe each other's ActivityLog / workouts.
       workers: 1,
       testMatch:
-        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|wave2-.*|wave3-.*|workout-logging|planned-workout-completion|ai-coach-chat-pro)\.spec\.ts/,
+        /(01-pro-full-journey|smoke-pro-routing|smoke-pro-onboarding|smoke-nutrition-search|wave2-.*|wave3-.*|workout-logging|planned-workout-completion|ai-coach-chat-pro|exercise-picker-add|achievements-self-heal|parse-ingredients)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: storageStateFor('pro'),
@@ -64,7 +64,7 @@ export default defineConfig({
     {
       name: 'free',
       testMatch:
-        /(ai-coach-chat-free|premium-upgrade|payu-upgrade|coupon-redemption)\.spec\.ts/,
+        /(ai-coach-chat-free|premium-upgrade|payu-upgrade|coupon-redemption|upgrade-monthly-copy)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         storageState: storageStateFor('free'),
@@ -92,6 +92,16 @@ export default defineConfig({
       use: {
         ...devices['iPhone 13'],
         storageState: storageStateFor('pro'),
+      },
+    },
+    {
+      name: 'mobile-pro-plan-picker',
+      testMatch: /mobile-plan-picker\.spec\.ts/,
+      workers: 1,
+      use: {
+        ...devices['iPhone 13'],
+        storageState: storageStateFor('pro'),
+        viewport: { width: 390, height: 844 },
       },
     },
 
