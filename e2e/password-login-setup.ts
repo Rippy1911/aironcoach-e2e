@@ -18,7 +18,7 @@ import * as fs from 'node:fs/promises';
 
 loadEnv({ path: path.resolve(__dirname, '..', '.env') });
 
-const SLOTS = ['free', 'pro', 'admin', 'fresh'] as const;
+const SLOTS = ['free', 'pro', 'admin', 'fresh', 'coach', 'user'] as const;
 type Slot = (typeof SLOTS)[number];
 
 function parseArgs(): { slot: Slot } {
