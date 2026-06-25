@@ -1,0 +1,149 @@
+Follow Airon Coach architecture:
+- Coach is a capability on UserProfile.
+- Public coach profile = business card / landing page.
+- Trainee profiles unchanged.
+
+# P1 — Public coach card: default tab, layout, directory links
+
+## Prerequisites
+
+Prompt 11 set tab **order** to `coach | overview | activity | …` in bundle.
+
+This task fixes **default active tab** and **Coach tab card layout** when visiting from directory or shared links.
+
+---
+
+## Current prod issues
+
+### Public coach from directory
+
+QA on Coach Directory → click coach profile:
+
+```txt
+Tabs visible: Overview | Activity | Coach   (or similar)
+Default active: Overview
+Expected default: Coach
+```
+
+Direct URL without tab param:
+
+```txt
+/UserProfile?id=<public_coach_id>
+```
+
+must open **Coach** tab for profiles with public coach capability.
+
+### Coach tab content too narrow
+
+When Coach tab is opened, content column can be ~50% viewport with empty right side.
+
+Prompt 11 Part B spec not fully applied on live public profiles.
+
+### Shared / copy profile link
+
+Coach Hub **Copy profile link** should produce:
+
+```txt
+/UserProfile?id=<id>&tab=coach
+```
+
+so recipients land on the business card immediately.
+
+---
+
+## Required behavior
+
+### Default tab logic
+
+```js
+if (profile.is_public_coach || profile.is_coach && profile.coach_business_name) {
+  defaultTab = 'coach';
+} else {
+  defaultTab = 'overview';
+}
+```
+
+Apply on:
+
+- `/UserProfile?id=…` without `tab` param
+- Links from Coach Directory
+- Links from Community suggested coaches
+- Copy profile link from Coach Hub
+
+Respect explicit `?tab=overview` if user navigates manually.
+
+### Coach tab = business card layout
+
+Desktop layout:
+
+```txt
+max-w-6xl or max-w-7xl
+┌─────────────────────────────┬──────────────────┐
+│ Hero: photo, name, badge    │ Stats / CTA      │
+│ Headline, location          │ Accepting clients│
+│ Bio                         │ Price from       │
+│ Specialties                 │ Follow / Message │
+│ Certifications              │                  │
+│ Embedded service offers     │                  │
+└─────────────────────────────┴──────────────────┘
+```
+
+Must show for **viewers** (not only self):
+
+- COACH badge
+- Public coach name
+- Headline + bio
+- Specialties
+- Training mode + location
+- Accepting clients / visibility state
+- Active public offers (if any)
+- Follow / Message CTAs
+
+For **self**, add:
+
+- Edit coach profile
+- Manage services
+- Preview / Copy link
+
+Avoid duplicating entire coach card inside Overview tab.
+
+### Overview tab for coaches
+
+Overview may show personal/trainee activity summary — but must not be the default landing for a public coach profile.
+
+---
+
+## Directory integration
+
+Coach Directory cards link to:
+
+```txt
+/UserProfile?id=<coach_id>&tab=coach
+```
+
+Not bare id without tab.
+
+---
+
+## Acceptance checklist
+
+```txt
+[ ] Directory → coach profile opens Coach tab by default
+[ ] /UserProfile?id=<coach> without tab opens Coach tab
+[ ] Copy profile link includes &tab=coach
+[ ] Coach tab uses 2-column card layout on desktop (not narrow max-w-2xl only)
+[ ] Non-coach profiles still default to Overview
+[ ] Self My Profile for coach still uses tab=coach from menu
+```
+
+---
+
+## Retest
+
+```bash
+TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
+```
+
+Check public coach from `/CoachDirectory` — screenshot default tab + width %.
+
+Report UserProfile tab routing files changed.

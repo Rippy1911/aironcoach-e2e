@@ -1,0 +1,141 @@
+Follow Airon Coach architecture:
+- One unified account.
+- Coach is a capability on `UserProfile`.
+- No profile mode switcher.
+- Do not add new entities for this task unless required to fix API errors.
+
+# P1 — API reliability: 429 storm, dead functions, Home 500
+
+## Prerequisites
+
+Prompts 07 + 09–13 are deployed. Canonical profile and coach funnel work.
+
+Stop only if coach save returns 403 again or My Profile opens someone else's row.
+
+---
+
+## Current prod issues (verified 2026-06-25)
+
+Automated QA on `https://airon.coach`:
+
+```txt
+[P1] API: Rate limit 429 on repeated entity fetches
+[P2] API: classifyConversationTier 404 — Deployment does not exist
+[P2] API: getWorkoutsWithSets 500 — Home dashboard workouts fail
+```
+
+Example burst during one logged-in session:
+
+```txt
+GET UserProfile?created_by_id=<auth_id>        → 429
+GET UserProfile?created_by=<email>&limit=1     → 429
+GET UserProfile?created_by=<email>&limit=50    → 429
+GET TeamMember?user_email=...                  → 429
+GET Workout?status=in_progress                 → 429
+```
+
+Console symptom:
+
+```txt
+Failed to load profile (attempt 1/2)
+```
+
+This makes the app feel broken even when coach/profile features are correct.
+
+---
+
+## Root causes to fix
+
+### A — Duplicate UserProfile fetches
+
+Multiple hooks/components still query `UserProfile` independently on every route change:
+
+- `created_by_id` filter
+- `created_by` email filter with `limit=1`
+- `created_by` email filter with `limit=50`
+
+Fix: **one canonical profile query per session** via shared cache (React Query / context). Other consumers read from cache and invalidate on save.
+
+### B — Missing / dead server functions
+
+Deploy or remove callers for:
+
+| Function | Current | Required |
+|----------|---------|----------|
+| `classifyConversationTier` | 404 | Deploy OR guard caller so 404 is silent/no UI break |
+| `getWorkoutsWithSets` | 500 | Fix handler; Home must not spam errors |
+
+### C — No client backoff on 429
+
+On 429, app should retry with backoff — not fire 10 parallel identical queries.
+
+---
+
+## Required behavior
+
+### Canonical profile fetch
+
+```txt
+1 auth session → 1 active UserProfile query keyed by auth user id
+```
+
+Rules:
+
+- Primary query: `UserProfile.filter({ created_by_id: authUser.id }, '-updated_date', 50)`
+- Pick canonical with existing `yse()` / `uu(authUser)` logic
+- **Do not** also fire separate `created_by` email queries on the same page load unless migration fallback is truly needed
+- After coach save / settings save → invalidate one query key only
+
+### 429 handling
+
+- Dedupe in-flight requests with same query key
+- Exponential backoff: 500ms → 1s → 2s (max 3 retries)
+- Show user-facing copy: `Couldn't refresh profile. Retry.` — not infinite loading shells
+
+### classifyConversationTier
+
+Either:
+
+1. Deploy the function, OR
+2. Remove/guard the caller so Community/Messages does not log 404 on every load
+
+No red errors in console on normal navigation.
+
+### getWorkoutsWithSets
+
+- Return 200 with empty array when no workouts — not 500
+- Home dashboard widgets degrade gracefully: `No workouts yet` + CTA
+
+---
+
+## Stop conditions
+
+Reject if solution:
+
+- Reintroduces `Fz()` coach scoring for self-profile selection
+- Adds a second `UserProfile` row per user
+- Disables rate limiting entirely without deduping client queries
+
+---
+
+## Acceptance checklist
+
+```txt
+[ ] One navigation Home → Community → Settings → Hub causes ≤2 UserProfile API calls total (not 10+)
+[ ] No 429 during normal 5-route navigation in 30 seconds
+[ ] classifyConversationTier: no 404 in network tab OR function deployed and 200
+[ ] getWorkoutsWithSets: 200 or graceful empty state on Home
+[ ] Coach Hub / Services still load after changes
+[ ] My Profile still opens canonical self row
+```
+
+---
+
+## Retest (operator)
+
+```bash
+TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
+TEST_PRO_EMAIL=... node scripts/coach-create-probe.mjs
+```
+
+Report changed files, before/after network call counts, and checklist results.

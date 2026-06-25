@@ -245,12 +245,14 @@ node scripts/coach-create-probe.mjs   # wypełnia + zapisuje coach profile
 node scripts/qa-sweep.mjs
 ```
 
-**Status promptów Base44:** **07 + 09–13 wdrożone na prod** (bundle `index-CxFQPeji.js`). Nie wklejaj ponownie bez regresji.
+**Status promptów Base44:** Faza 1 (07 + 09–13) **DONE**. Faza 2: **prompty 14–19** — wklej do Base44 po kolei.
 
-**Rerun 2026-06-25:** `prompt-deploy-audit` → allDeployed; Community/Hub ~86% szerokości; coach lifecycle + presence w bundle; qa-sweep bez mkpiwecki/flyout false positives.
+**Rerun 2026-06-25:** `prompt-deploy-audit` → allDeployed; Community/Hub ~86% szerokości; coach lifecycle + presence w bundle.
+
+**Runbook fazy 2:** `docs/base44-fix-runbook.md`
 
 ---
 
 ## Ostatnia aktualizacja
 
-2026-06-25 — prompty 07 + 09–13 potwierdzone na prod; nowy skrypt `prompt-deploy-audit.mjs`.
+2026-06-25 — faza 2: prompty 14–19 (API, routing, Community UI, coach funnel, public card, lifecycle delete).

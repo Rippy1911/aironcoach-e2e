@@ -1,0 +1,128 @@
+Follow Airon Coach architecture:
+- Do not redesign Home or Training in this task.
+- Community is for all users (coach + trainee).
+- Keep unified account — no mode switcher.
+
+# P1 — Community layout v2: feed width, Quick Actions, polish
+
+## Prerequisites
+
+Prompts 11 widened outer shell (`max-w-[1920px]` ~86% viewport). This task finishes the **inner feed column** and rail balance.
+
+---
+
+## Current prod state
+
+Bundle still contains:
+
+```txt
+max-w-[680px]   (nested feed column)
+```
+
+Logged-in metrics (`ui-audit-logged-in.mjs`):
+
+```txt
+Community primary shell: ~86% viewport (max-w-[1920px])  ✅ improved
+Nested feed column:      ~47% viewport (max-w-[680px])  ❌ still narrow
+Quick Actions rail:      visible on Feed tab             ❌ duplicates nav
+```
+
+QA finding:
+
+```txt
+Feed still has composer + Quick Actions rail
+Dual column: 680px feed + right rail
+```
+
+---
+
+## Goals
+
+1. Feed content uses available width inside the wide shell.
+2. Quick Actions rail stops duplicating sidebar navigation.
+3. Community tabs (Feed / Teams / Messages / People) share one consistent layout grid.
+
+---
+
+## Layout spec
+
+### Desktop (≥1024px)
+
+```txt
+Outer: max-w-6xl or max-w-7xl or max-w-[1920px] (keep current wide shell)
+Grid:  [ main feed column ]  [ optional discovery rail ]
+```
+
+Main feed column:
+
+```txt
+min-width: 0
+flex: 1
+max-width: none OR max-w-3xl/4xl inside the grid — NOT fixed 680px
+```
+
+Target: primary readable column **≥60%** of viewport on 1440px (≈860px+).
+
+Right rail (optional, collapsible):
+
+- Suggested coaches
+- My teams snippet
+- **Remove** Quick Actions that duplicate sidebar: Find a coach, Go to teams, My trainees (already in nav)
+
+Keep rail only for **discovery** content not in sidebar.
+
+### Mobile
+
+- Single column
+- Composer accessible (FAB or inline — keep current mobile behavior)
+
+---
+
+## Feed tab specific
+
+Remove or hide on desktop:
+
+```txt
+QUICK ACTIONS
+Find a coach
+Go to teams
+My trainees
+```
+
+These are redundant with left sidebar: Find Coach, Trainees, Teams.
+
+Keep:
+
+- Composer (inline or top)
+- Following / Discover filters
+- Feed posts
+
+---
+
+## People tab
+
+If People tab shows load error, fix data fetch — do not leave error toast on default tab switch.
+
+---
+
+## Acceptance checklist
+
+```txt
+[ ] Community Feed primary content column ≥60% viewport at 1440px
+[ ] No max-w-[680px] on the main feed column (may remain on small cards only)
+[ ] Quick Actions duplicate nav removed on desktop Feed
+[ ] Teams / Messages tabs use same wide shell
+[ ] People tab loads without error state on default visit
+[ ] Mobile layout not regressed
+```
+
+---
+
+## Retest
+
+```bash
+node scripts/ui-audit-prod.mjs
+TEST_PRO_EMAIL=... node scripts/ui-audit-logged-in.mjs
+```
+
+Report: screenshot before/after Community Feed at 1440px, measured content width %.

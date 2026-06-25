@@ -1,0 +1,135 @@
+Follow Airon Coach architecture:
+- Deactivate/delete coach ≠ delete account.
+- One unified account always remains.
+- Use copy: Pause / Deactivate / Reactivate / Delete public coach data.
+
+# P2 — Coach lifecycle completion + Settings coach UX
+
+## Prerequisites
+
+Prompt 13 deployed pause/deactivate/reactivate in bundle.
+
+This task completes **Delete public coach data** and consolidates Settings coach panel.
+
+---
+
+## Current prod gaps
+
+Bundle audit (2026-06-25):
+
+```txt
+deactivateCoachProfile:     ✅
+reactivateCoachProfile:     ✅
+Pause coach profile:        ✅
+Delete public coach data:   ❌ copy/flow missing
+```
+
+Settings `/Settings?tab=coach` (after prompt 15) should show one coherent coach admin panel.
+
+---
+
+## Part A — Delete public coach data (danger zone)
+
+Location: Settings → Coach Profile → bottom danger zone.
+
+UI:
+
+```txt
+Delete public coach data
+Removes your public coach profile, offers, and marketing visibility.
+Your account, workouts, messages, and subscription stay active.
+[ Delete public coach data ]
+```
+
+Confirmation modal:
+
+```txt
+Type DELETE to confirm
+This cannot be undone. Your personal account will not be deleted.
+```
+
+Backend behavior:
+
+- Clear or archive coach-public fields on canonical UserProfile
+- Archive/delete service tiers per existing safe API
+- Set `is_coach=false`, `coach_status=none` or equivalent
+- Keep auth user, personal profile, workouts, community, billing
+
+After delete:
+
+- Menu hides Coach Hub / Services (or shows Create coach profile)
+- `/CreateCoachProfile` starts fresh wizard
+- No orphaned public directory listing
+
+---
+
+## Part B — Settings coach panel consolidation
+
+Single **Coach Profile** settings page sections:
+
+```txt
+1. Visibility & accepting clients (pause controls)
+2. Profile completeness checklist (links to edit)
+3. Availability / training mode / location (if not only on CreateCoachProfile)
+4. Lifecycle actions:
+   - Pause coach profile
+   - Deactivate coach profile
+   - Reactivate coach profile (when inactive)
+5. Danger zone:
+   - Delete public coach data
+```
+
+Remove scattered duplicate controls across Account vs Coach panels.
+
+Link:
+
+```txt
+Edit full coach profile → /CreateCoachProfile
+Manage services → /CoachServices
+Open coach hub → /CoachBusinessHub
+```
+
+---
+
+## Part C — Inactive / paused states in nav
+
+| State | Sidebar Coach Hub | Public directory |
+|-------|-------------------|------------------|
+| Active coach | Visible | Listed if public |
+| Paused | Visible | Hidden or "Not accepting" |
+| Deactivated | Hidden or Reactivate CTA | Hidden |
+| Deleted coach data | Create coach profile CTA | Not listed |
+
+`/CoachBusinessHub` for deactivated coach with retained data:
+
+```txt
+Reactivate coach profile
+Your coach data is saved.
+```
+
+Not: `Create a coach profile first` when data exists.
+
+---
+
+## Acceptance checklist
+
+```txt
+[ ] Delete public coach data flow with typed DELETE confirmation
+[ ] Account remains after delete; can still use Home/Training
+[ ] Deactivate + Reactivate still work after this change
+[ ] Settings coach panel has all lifecycle actions in one place
+[ ] Paused coach: accepting_clients=false, visibility private
+[ ] Hub shows reactivate screen for deactivated coach with saved data
+```
+
+---
+
+## Retest
+
+```bash
+TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
+```
+
+Use a **disposable test coach** for delete test — not production marketing account.
+
+Report server functions added/changed and Settings component structure.

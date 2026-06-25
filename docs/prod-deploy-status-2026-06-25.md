@@ -68,6 +68,15 @@ TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
 
 ## Dla operatora Base44
 
-**Nie wklejaj ponownie 09–13**, chyba że któryś z powyższych residuali wróci jako regresja.
+**Faza 1 (09–13):** wdrożone — nie wklejaj ponownie bez regresji.
 
-Następna praca w tym repo E2E: utrzymanie skryptów weryfikacyjnych + nowe bugi odkryte po deployu.
+**Faza 2 — wklej teraz w kolejności:**
+
+1. `prompts/base44-prompt-14-api-reliability-query-storm.txt`
+2. `prompts/base44-prompt-15-routing-deep-links-orphans.txt`
+3. `prompts/base44-prompt-16-community-layout-feed-v2.txt`
+4. `prompts/base44-prompt-17-coach-funnel-form-services-e2e.txt`
+5. `prompts/base44-prompt-18-public-coach-card-default-tab.txt`
+6. `prompts/base44-prompt-19-coach-lifecycle-delete-settings-ux.txt`
+
+Runbook: `docs/base44-fix-runbook.md`
