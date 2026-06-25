@@ -107,13 +107,14 @@ Bez chevron: My Profile, Coach Hub, Follows, Settings, Manage plan — direct na
 | Plik | Kiedy użyć |
 |------|------------|
 | `docs/base44-handoff.md` | Ten plik — kontekst |
-| `prompts/base44-prompt-03-continuation.txt` | Task 4 (P0 anti-duplikacja) — **wykonany** |
-| `prompts/base44-prompt-04-menu-profile-hub.txt` | **Następny** — menu flyout + Profile Hub |
+| `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | **P0 TERAZ** — Coach Hub po create profile |
+| `prompts/base44-prompt-04-menu-profile-hub.txt` | Menu flyout + Profile Hub (po P0 coach) |
 
 ---
 
 ## Priorytety następny task
 
+0. **P0-COACH** — getCoachStats 404 + Coach Hub empty state po create profile (**NOWY BUG**)
 1. **P0-B** — napraw Online flyout + usuń fałszywe chevrony (My Profile, Coach Hub)
 2. **P1** — Profile Hub kompletny + redirect MyFollows
 3. **P2** — Community dokończenie (content-start, Invite card)
@@ -126,14 +127,44 @@ Bez chevron: My Profile, Coach Hub, Follows, Settings, Manage plan — direct na
 
 ```
 Prod: airon.coach. Unified account, no profile mode.
-Done: referral capture, streak opt-in, getMyFollows fix, Feed P0 anti-duplikacja (1 composer).
-Bug: Online flyout clipped/invisible; My Profile & Coach Hub have chevrons without submenu.
-Next: fix menu flyout (overflow/portal), remove fake chevrons, build Profile Hub tabs.
-Full: docs/base44-handoff.md | Prompt: prompts/base44-prompt-04-menu-profile-hub.txt
+P0 BUG: Coach profile save OK but Coach Hub shows "not a coach" — getCoachStats returns 404 Deployment does not exist.
+Done: referral capture, streak opt-in, getMyFollows fix, Feed P0 anti-duplikacja.
+Also: Online flyout clipped; fake chevrons on My Profile/Coach Hub menu.
+Next: prompts/base44-prompt-05-coach-hub-getCoachStats.txt (P0), then prompt 04.
+Handoff: docs/base44-handoff.md
 ```
+
+---
+
+## P0 BUG — Coach Hub po utworzeniu profilu coacha (2026-06-24)
+
+### Symptom
+Save coach profile → toast „Coach profile created" → redirect `/CoachBusinessHub` → **„You're not a coach yet"**. Sidebar pokazuje COACH badge (profil zapisany).
+
+### Root cause (potwierdzone testem prod)
+```
+POST https://airon.coach/functions/getCoachStats
+→ "Deployment does not exist"
+```
+Ten sam wzorzec co `redeemReferralCode` (martwy deployment / lokalny import `../_lib/withRetry.js`).
+
+### Logika frontend (dlaczego UI kłamie)
+`CoachBusinessHub` (`KDe`):
+1. Gate 1: `Vy(profile)` = `!!coach_business_name` → user przechodzi po save ✅
+2. Gate 2: `getCoachStats()` → **404** → UI pokazuje `notCoach` empty state ❌
+
+API error jest myląco mapowany na „nie jesteś coachem".
+
+### Fix
+- Backend: napraw/deploy `getCoachStats` (inline withRetry)
+- Frontend: error state + Retry, NIE „not a coach" przy API fail
+- Po save: invalidate `myProfile` + `coachStats` przed redirect
+- Bonus: sidebar Home + Coach Hub oba active
+
+**Prompt:** `prompts/base44-prompt-05-coach-hub-getCoachStats.txt`
 
 ---
 
 ## Ostatnia aktualizacja
 
-2026-06-24 — Task 4 P0 done + user menu UX bugs (Online flyout, misleading chevrons).
+2026-06-24 — Coach Hub getCoachStats 404 bug + Task 4 P0 + menu UX bugs.
