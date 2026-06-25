@@ -1,0 +1,411 @@
+PROMPT 35 — Fix profile architecture: 1 user = 1 UserProfile + Trainees nav eligibility
+
+═══════════════════════════════════════════════════════════════
+CURRENT VERIFIED STATE
+═══════════════════════════════════════════════════════════════
+
+Production bundle checked:
+  index-DArH14fQ.js
+
+Test accounts used for verification:
+  Coach owner: lokistakontakt@gmail.com
+  Regular user: lokistastream@gmail.com
+
+Do NOT store passwords in code or repo.
+
+E2E verification on current production:
+
+Coach owner:
+  own UserProfile count: 1
+  own profile id: 6a3ca50c65a59273f399090e
+  is_coach: true
+  coach_status: approved
+  owned teams: 1
+  desktop nav: Trainees=true, CoachHub=true, Services=true
+  mobile nav: Trainees=true
+
+Regular user:
+  own UserProfile count: 1
+  own profile id: 6a3cb9acbd10f5b54a06b6b9
+  is_coach: false
+  coach_status: none
+  owned teams: 0
+  desktop nav: Trainees=false, CoachHub=false, Services=false, FindCoach=true
+  mobile nav: Trainees=false, FindCoach=true
+
+This means the test fixtures are currently healthy, but the product architecture
+must enforce the invariant globally so duplicates do not reappear.
+
+═══════════════════════════════════════════════════════════════
+GOAL
+═══════════════════════════════════════════════════════════════
+
+Fix the architecture:
+
+  1. Each auth user has exactly one canonical UserProfile.
+  2. Coach profile is NOT a second UserProfile.
+  3. Coach data/listing details live as fields/extension on the same canonical
+     UserProfile.
+  4. If the user has a team and is a coach/owner, show Trainees in desktop
+     sidebar and mobile bottom navigation.
+  5. Regular users must not see coach/trainee operational nav.
+  6. Validate end-to-end and avoid regressions to:
+      - My Profile
+      - UserProfile owner edit
+      - Coach Directory/listing
+      - Coach Hub
+      - Services
+      - visitor profile view
+
+═══════════════════════════════════════════════════════════════
+CORE INVARIANT: 1 USER = 1 USERPROFILE
+═══════════════════════════════════════════════════════════════
+
+There must never be two UserProfile records for the same auth user.
+
+Canonical identity:
+
+  UserProfile.created_by_id === auth.user.id
+  OR UserProfile.created_by/email === auth.user.email for legacy rows.
+
+Creating a coach listing must update the existing UserProfile:
+
+  DO:
+    update UserProfile set:
+      is_coach = true
+      coach_status = "pending" / "approved"
+      coach_profile_visibility = "private" / "public"
+      coach_business_name
+      coach_headline
+      coach_bio
+      specialties
+      certifications
+      years_experience
+      price_per_session
+      services metadata, if applicable
+
+  DO NOT:
+    create a second UserProfile for the same user
+    create a separate "coach profile" row in UserProfile
+    link /UserProfile?id=... to a duplicate row
+
+Terminology:
+  - UserProfile = one canonical profile per user
+  - Coach details / Coach listing = extension fields on UserProfile
+  - Services/Offers = separate service records, linked to canonical UserProfile.id
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — CENTRALIZE GET-OR-CREATE PROFILE
+═══════════════════════════════════════════════════════════════
+
+Create/reuse one helper used everywhere:
+
+  getOrCreateCanonicalUserProfile(authUser)
+
+Logic:
+
+  1. Find UserProfile by created_by_id = authUser.id.
+  2. If none, find legacy UserProfile by created_by/email = authUser.email.
+  3. If exactly one found:
+      - backfill created_by_id if missing/wrong and safe
+      - return it
+  4. If multiple found:
+      - choose canonical:
+          newest profile with created_by_id === authUser.id
+          else newest profile with created_by/email match
+          prefer profile with is_coach=true / coach_status if user has coach data
+      - merge duplicates into canonical
+      - soft-delete/archive duplicates or mark merged_into_profile_id
+      - return canonical
+  5. If none:
+      - create exactly one UserProfile.
+
+All flows must use this helper:
+  - onboarding
+  - profile page
+  - My Profile link
+  - Coach onboarding / create coach listing
+  - Coach Hub
+  - CoachServices
+  - getUserProfile
+  - auth/global setup
+  - any seed/demo creation for real users
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — MERGE DUPLICATE USERPROFILES SAFELY
+═══════════════════════════════════════════════════════════════
+
+Implement or harden mergeDuplicateUserProfiles:
+
+For each auth user/email with >1 owned profile:
+
+  canonical = chooseCanonicalProfile(profiles)
+
+Merge data:
+  - keep canonical id stable
+  - prefer non-empty values from most recently updated duplicates
+  - preserve coach fields:
+      is_coach
+      coach_status
+      coach_profile_visibility
+      coach_business_name
+      coach_headline
+      coach_bio
+      specialties
+      certifications
+      testimonials
+      price_per_session
+      years_experience
+      coach languages/location/mode
+  - preserve user fields:
+      bio
+      avatar/cover
+      preferences
+      premium/subscription fields
+      streak/stats
+      onboarding flags
+
+Re-link dependent entities from duplicate ids to canonical id:
+  - CoachServices / offers
+  - follow/follower records
+  - message requests
+  - testimonials
+  - teams / team memberships if they reference profile id
+  - public profile links if stored
+
+Then:
+  - archive duplicates
+  - or mark duplicates as merged_into_profile_id
+  - ensure getUserProfile never resolves archived duplicate as self profile
+
+Do NOT delete data blindly.
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — GETUSERPROFILE RESOLUTION
+═══════════════════════════════════════════════════════════════
+
+getUserProfile({ user_id }) must resolve profiles consistently:
+
+  1. user_id in URL is UserProfile.id.
+  2. If a legacy User.id is passed, redirect/resolve to canonical UserProfile.id.
+  3. If user_id points to archived/merged duplicate:
+      - resolve canonical profile
+      - include canonical id in response
+      - optionally return redirect_profile_id for frontend URL normalization
+
+Response must include:
+
+  id: canonicalProfile.id
+  user_id: canonicalProfile.id   // if existing frontend expects user_id
+  is_self: true/false
+  is_coach
+  is_public_coach
+  coach_status
+  _my_profile_id: canonical own profile id for the caller
+
+is_self logic:
+
+  is_self = caller exists AND canonicalProfile is caller's canonical profile
+
+Do not rely on the requested URL id alone if it may be a merged duplicate.
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — MY PROFILE / PROFILE LINKS
+═══════════════════════════════════════════════════════════════
+
+All "My Profile" links must use canonical UserProfile.id.
+
+Desktop sidebar:
+  My Profile → /UserProfile?id={canonicalUserProfile.id}&tab=coach if coach
+             → /UserProfile?id={canonicalUserProfile.id}&tab=overview otherwise
+
+Mobile bottom nav / user menu:
+  same canonical id.
+
+Coach Directory cards:
+  link to canonical UserProfile.id.
+
+Coach Hub:
+  Edit public profile / Preview profile:
+    /UserProfile?id={canonicalUserProfile.id}&tab=coach
+
+If frontend detects:
+  current URL id != response.id
+
+Then replace URL:
+  /UserProfile?id={response.id}&tab={currentTab}
+
+═══════════════════════════════════════════════════════════════
+FIX 5 — COACH LISTING CREATION
+═══════════════════════════════════════════════════════════════
+
+When a user creates a coach listing:
+
+  1. Load canonical UserProfile via getOrCreateCanonicalUserProfile.
+  2. Update coach fields on that profile.
+  3. Do not create a new UserProfile.
+  4. Services/offers should reference canonical profile id.
+
+Acceptance:
+
+  User starts as regular profile:
+    own profile count = 1
+
+  User becomes coach:
+    own profile count still = 1
+    same UserProfile.id
+    is_coach=true
+    coach fields filled
+
+  User creates service:
+    own profile count still = 1
+    service linked to canonical profile id
+
+═══════════════════════════════════════════════════════════════
+FIX 6 — TRAINEES NAV ELIGIBILITY
+═══════════════════════════════════════════════════════════════
+
+Show Trainees tab/link only when:
+
+  hasTeamAccess && isCoachOrOwner
+
+Define:
+
+  isCoachOrOwner =
+    profile.is_coach === true
+    OR profile.coach_status === "approved"
+    OR user has role "coach"
+    OR user is owner/admin of at least one team
+
+  hasTeamAccess =
+    user owns a team
+    OR user is coach/admin in a TeamMembership
+
+Recommended function:
+
+  canSeeTraineesNav({ user, profile, teams, memberships }) {
+    const isCoachOrOwner =
+      profile?.is_coach === true ||
+      profile?.coach_status === "approved" ||
+      teams.some(t => t.created_by_id === user.id || t.owner_user_id === user.id) ||
+      memberships.some(m => ["owner", "coach", "admin"].includes(m.role));
+
+    const hasTeamAccess = teams.length > 0 || memberships.length > 0;
+
+    return isCoachOrOwner && hasTeamAccess;
+  }
+
+Apply same logic to:
+  - desktop sidebar
+  - mobile bottom navigation
+  - any route guard for /Trainees
+
+Do not show Trainees for regular users with no team.
+Do not hide Trainees from approved coaches/team owners on mobile.
+
+═══════════════════════════════════════════════════════════════
+FIX 7 — ROUTE GUARDS
+═══════════════════════════════════════════════════════════════
+
+/Trainees route:
+
+  if canSeeTraineesNav === true:
+    allow
+  else:
+    redirect to /Home or /FindCoach
+    show no sidebar/bottom nav Trainees link
+
+/CoachBusinessHub and /CoachServices:
+
+  visible only for coach-capable users:
+    is_coach true OR coach_status approved/pending OR owner has coach plan
+
+Regular user:
+  sees Find Coach, not Coach Hub / Services / Trainees.
+
+═══════════════════════════════════════════════════════════════
+E2E TESTS REQUIRED
+═══════════════════════════════════════════════════════════════
+
+Use the known test accounts:
+  Coach owner: lokistakontakt@gmail.com
+  Regular user: lokistastream@gmail.com
+
+Do not commit passwords.
+
+T1 — Canonical profile invariant, coach:
+  login coach
+  query own profiles by auth id/email
+  expect exactly 1 owned UserProfile
+  expect is_coach=true
+
+T2 — Canonical profile invariant, regular user:
+  login regular user
+  query own profiles by auth id/email
+  expect exactly 1 owned UserProfile
+  expect is_coach=false
+
+T3 — Coach nav desktop:
+  login coach
+  desktop /Home
+  expect Trainees visible
+  expect Coach Hub visible
+  expect Services visible
+
+T4 — Coach nav mobile:
+  login coach
+  mobile /Home
+  expect Trainees visible in bottom navigation
+
+T5 — Regular user nav desktop:
+  login regular user
+  desktop /Home
+  expect Trainees hidden
+  expect Coach Hub hidden
+  expect Services hidden
+  expect Find Coach visible
+
+T6 — Regular user nav mobile:
+  login regular user
+  mobile /Home
+  expect Trainees hidden
+  expect Find Coach visible
+
+T7 — Create coach listing does not create second UserProfile:
+  start regular test user in isolated/staging account
+  complete coach listing flow
+  expect own profile count remains 1
+
+T8 — Duplicate legacy profile migration:
+  seed two owned profiles for same auth user in staging
+  run merge
+  expect one canonical profile
+  expect coach fields/services preserved
+  expect /UserProfile old duplicate URL resolves canonical id
+
+═══════════════════════════════════════════════════════════════
+REGRESSION RISKS TO CHECK
+═══════════════════════════════════════════════════════════════
+
+Do not break:
+  - owner inline edit on /UserProfile
+  - visitor Follow / Message buttons
+  - Coach Directory
+  - Coach Hub
+  - CoachServices
+  - onboarding
+  - profile visibility public/private
+  - service cards on public profile
+  - team/trainee management
+
+═══════════════════════════════════════════════════════════════
+DEFINITION OF DONE
+═══════════════════════════════════════════════════════════════
+
+Every real auth user has one canonical UserProfile.
+Coach listing is an extension of that profile, not a second profile.
+Duplicate legacy profiles are merged or safely redirected to canonical.
+All profile links use canonical UserProfile.id.
+Trainees nav appears for coach/team owner on desktop and mobile.
+Trainees nav is hidden for regular users.
+E2E tests above pass.
