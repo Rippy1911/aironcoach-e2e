@@ -1,0 +1,304 @@
+PROMPT 33 — Coach profile UX cleanup: storefront po lewej/prawej + edycja w Coach Hub
+
+═══════════════════════════════════════════════════════════════
+KONTEKST
+═══════════════════════════════════════════════════════════════
+
+Prompt 31/32 naprawiły owner edit na /UserProfile.
+Teraz problem nie jest techniczny, tylko UX / product architecture:
+
+  ✓ Owner widzi edycję
+  ✗ Publiczny profil wygląda za bardzo jak panel administracyjny
+  ✗ Elementy typu "Open Coach Hub" są w treści profilu
+  ✗ Oferty / coaching services nie są domyślnie mocno widoczne po prawej
+  ✗ Zniknął wcześniejszy panel marketing, który był dobry do edycji profilu coacha
+  ✗ Wszystko inline na publicznym profilu jest zbyt ciężkie
+
+NOWY KIERUNEK:
+  Publiczny profil = clean storefront dla odwiedzającego
+  Coach Hub = miejsce konfiguracji / edycji / operacji
+  Services = osobna konfiguracja ofert, nie część marketing/personal info
+  Bez drag&drop — zachowujemy simplicity, ale modern.
+
+═══════════════════════════════════════════════════════════════
+CELE UX
+═══════════════════════════════════════════════════════════════
+
+1. Profil coacha ma wyglądać jak nowoczesna strona twórcy / coacha:
+   Patreon / Contra / Linktree / modern consultant profile.
+
+2. Oferty, które coach tworzy, mają być widoczne od razu po prawej stronie:
+   - cena
+   - co zawiera
+   - CTA: Book / Request coaching / Send request
+   - status: accepting clients
+
+3. Treść profilu ma być czysta:
+   - About
+   - Specialties
+   - Certifications
+   - Testimonials
+   - Location / mode
+   - Experience
+
+4. Narzędzia właściciela nie powinny mieszać się z treścią:
+   - "Open Coach Hub"
+   - visibility toggles
+   - publish/private controls
+   - internal navigation
+
+   To ma być w panelu właściciela, nie w środku contentu.
+
+═══════════════════════════════════════════════════════════════
+PUBLIC USERPROFILE — NOWY LAYOUT
+═══════════════════════════════════════════════════════════════
+
+Na /UserProfile?id=...&tab=coach:
+
+DESKTOP:
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Banner / hero                                                │
+  │ avatar, name, badge, headline, location, followers           │
+  │                                            [Owner actions ⋯] │
+  └─────────────────────────────────────────────────────────────┘
+
+  ┌───────────────────────────────┐  ┌─────────────────────────┐
+  │ Main content                   │  │ Sticky right sidebar    │
+  │ - About                        │  │ - Coaching offers       │
+  │ - Specialties                  │  │ - Price cards           │
+  │ - Certifications               │  │ - Book / Request CTA    │
+  │ - Testimonials                 │  │ - Availability summary  │
+  │ - Experience / Location        │  │ - Contact/message CTA   │
+  └───────────────────────────────┘  └─────────────────────────┘
+
+MOBILE:
+  - Hero
+  - Primary offer card immediately under hero
+  - Main content
+  - Remaining offers
+
+═══════════════════════════════════════════════════════════════
+RIGHT SIDEBAR — COACHING SERVICES / OFFERS
+═══════════════════════════════════════════════════════════════
+
+Oferty tworzone w CoachServices powinny renderować się po prawej stronie profilu.
+
+Jeśli coach ma services:
+  - pokaż listę kart ofert
+  - pierwsza / featured oferta na górze
+  - każda karta:
+      title
+      short description
+      price + currency
+      cadence, jeśli istnieje (per session / monthly / package)
+      key inclusions, max 3 bullets
+      CTA
+
+Jeśli coach nie ma services:
+  - pokaż prosty fallback:
+      "Coaching available"
+      price_per_session jeśli istnieje
+      CTA: "Send coaching request"
+  - owner widzi small hint:
+      "Add services in Coach Hub → Services"
+
+VISITOR:
+  - CTA: Book / Request coaching / Send message request
+  - żadnych pencil icons
+  - żadnych internal controls
+
+OWNER:
+  - sidebar nadal pokazuje oferty tak jak visitor
+  - owner controls jako subtelne:
+      "Manage services" link/button
+      NIE inline form
+  - link prowadzi do /CoachServices lub Coach Hub → Services
+
+═══════════════════════════════════════════════════════════════
+OWNER ACTIONS — PRZENIEŚĆ Z TREŚCI DO HERO / TOP RIGHT
+═══════════════════════════════════════════════════════════════
+
+Usuń z głównej treści profilu:
+  ✗ Open Coach Hub card/button jako content block
+  ✗ Profile & visibility card w main content
+  ✗ Share my coach profile publicly toggle w treści
+  ✗ Accepting new clients toggle w treści
+
+Zamiast tego:
+
+W prawym górnym rogu hero / bannera owner widzi mały owner toolbar:
+  - Guest View toggle
+  - Edit profile / Manage profile
+  - Open Coach Hub
+  - More menu (...)
+
+Toolbar ma być wizualnie oddzielony od contentu:
+  - small buttons
+  - aligned top-right
+  - not a big content card
+
+Visitor nie widzi owner toolbar.
+
+═══════════════════════════════════════════════════════════════
+INLINE EDIT — ZMNIEJSZYĆ, NIE USUWAĆ
+═══════════════════════════════════════════════════════════════
+
+Inline edit zostaje, ale nie ma być jedynym sposobem zarządzania profilem.
+
+Na publicznym profilu:
+  - pencil icons tylko przy content fields
+  - About
+  - Headline
+  - Specialties
+  - Certifications
+  - Testimonials
+  - Location/mode
+  - Experience
+
+Nie pokazuj inline edycji dla:
+  - services/offers
+  - pricing packages
+  - visibility lifecycle controls
+  - internal Coach Hub navigation
+
+Services edytuje się w CoachServices / Coach Hub → Services.
+
+═══════════════════════════════════════════════════════════════
+COACH HUB — PRZYWRÓCIĆ PANEL DO EDYCJI PROFILU
+═══════════════════════════════════════════════════════════════
+
+Poprzedni Marketing panel był dobry jako miejsce do tworzenia profilu coacha.
+Przywróć jego ideę, ale zmień nazwę, żeby była bardziej trafna.
+
+NIE nazywać tego "Marketing", jeśli obejmuje personal profile.
+Proponowane nazwy:
+  - Profile Studio
+  - Public Profile
+  - Profile Builder
+  - Brand & Profile
+
+Najlepsza nazwa: "Profile Studio"
+
+Coach Hub tabs:
+  - Overview
+  - Profile Studio
+  - Services
+  - Requests / Clients (jeśli istnieje)
+
+Profile Studio zawiera:
+  - Personal info:
+      display name / coach business name
+      headline
+      bio/about
+      avatar/cover
+      location/mode
+      languages
+  - Trust:
+      certifications
+      experience
+      testimonials
+  - Visibility / lifecycle:
+      public/private
+      accepting clients
+      directory visibility
+  - Preview link:
+      "View public profile"
+
+Profile Studio NIE zawiera:
+  ✗ tworzenia services
+  ✗ pricing packages
+  ✗ offer management
+
+Services tab / CoachServices zawiera:
+  - service title
+  - service description
+  - price
+  - package type
+  - CTA behavior
+  - active/inactive
+  - featured/default offer
+
+═══════════════════════════════════════════════════════════════
+WAŻNE: SERVICES NIE W MARKETING / PROFILE STUDIO
+═══════════════════════════════════════════════════════════════
+
+Nie mieszaj:
+
+Profile Studio = kim jestem i jak wygląda mój publiczny profil
+Services = co sprzedaję / jakie coaching offers mam
+
+To są osobne mental models.
+
+Na profilu publicznym services renderują się po prawej.
+W Coach Hub services edytuje się tylko w Services.
+
+═══════════════════════════════════════════════════════════════
+USUNĄĆ DRAG & DROP
+═══════════════════════════════════════════════════════════════
+
+Odpuszczamy drag & drop.
+
+Nie implementuj:
+  ✗ reorder sekcji
+  ✗ custom blocks
+  ✗ page builder canvas
+  ✗ złożone layout controls
+
+Zachowujemy prosty, stały layout:
+  1. Hero
+  2. Main content
+  3. Right offers sidebar
+
+Modern, clean, low complexity.
+
+═══════════════════════════════════════════════════════════════
+ACCEPTANCE TESTS
+═══════════════════════════════════════════════════════════════
+
+T1 — Visitor profile layout desktop:
+  /UserProfile?id={publicCoachId}&tab=coach
+  ✓ Main content po lewej
+  ✓ Coaching offers / price cards po prawej
+  ✓ CTA widoczne bez scrollowania
+  ✓ Brak Open Coach Hub / owner controls
+
+T2 — Owner profile layout:
+  Owner → /UserProfile?id={myProfileId}&tab=coach
+  ✓ Edit banner / Guest View działa
+  ✓ Owner toolbar w prawym górnym rogu hero
+  ✓ Brak dużych kart "Open Coach Hub" w main content
+  ✓ Pencils tylko przy polach contentowych
+
+T3 — Services:
+  Coach tworzy service w CoachServices
+  ✓ Service pojawia się jako karta po prawej na profilu
+  ✓ Cena i CTA widoczne
+  ✓ Edycja service NIE odbywa się w Profile Studio
+
+T4 — Profile Studio:
+  Coach Hub → Profile Studio
+  ✓ Można edytować personal/profile info
+  ✓ Można zmienić visibility / accepting clients
+  ✓ Nie można edytować services
+
+T5 — Mobile:
+  ✓ Pierwsza oferta widoczna od razu pod hero
+  ✓ Content czytelny
+  ✓ Owner controls nie zaśmiecają treści
+
+T6 — No services fallback:
+  Coach bez services
+  ✓ Sidebar pokazuje prosty fallback z price_per_session lub contact CTA
+  ✓ Owner widzi link "Manage services"
+
+═══════════════════════════════════════════════════════════════
+DEFINITION OF DONE
+═══════════════════════════════════════════════════════════════
+
+Publiczny coach profile wygląda jak storefront, nie panel admina.
+Oferty / coaching services są domyślnie widoczne po prawej.
+Owner controls są w toolbarze, nie w treści.
+Coach Hub ma Profile Studio do edycji profilu.
+Services pozostają osobnym miejscem do zarządzania ofertami.
+Brak drag&drop i brak ciężkiego page buildera.
