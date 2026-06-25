@@ -1,0 +1,182 @@
+PROMPT 31 — FIX: Owner nie widzi edycji na /UserProfile (is_self bug)
+
+═══════════════════════════════════════════════════════════════
+KONTEKST — CO JUŻ JEST W KODZIE (NIE DUPLIKUJ)
+═══════════════════════════════════════════════════════════════
+
+Strona UserProfile (komponent wyt) JUŻ MA logikę inline edit:
+
+  _ = profile.is_self === true          // czy to mój profil
+  k = _ && !guestView                   // tryb edycji (gdy nie Guest View)
+  
+  // Przyciski Follow / Message — TYLKO gdy NIE owner:
+  !_ && <Follow> <Send message request>
+  
+  // Coach tab z edycją:
+  tab === "coach" && is_public_coach && <CoachTab editable={k} />
+  
+  // Banner edycji:
+  k && "Edit mode — click any pencil icon to update your profile"
+
+CoachTab (gyt) JUŻ MA pencil icons gdy editable=true.
+
+Coach Hub redirect JUŻ DZIAŁA:
+  /CoachBusinessHub?section=profile → /UserProfile?id={profileId}&tab=coach
+
+PROBLEM: getUserProfile zwraca is_self: false nawet gdy zalogowany user
+jest właścicielem profilu. Frontend jest OK — backend/ID mismatch psuje owner detection.
+
+═══════════════════════════════════════════════════════════════
+BUG (POTWIERDZONY NA PRODUKCJI)
+═══════════════════════════════════════════════════════════════
+
+Owner (np. damm ian, lokistakontakt) wchodzi na SWÓJ profil coach:
+  /UserProfile?id={SWOJE_ID}&tab=coach
+
+Widzi:
+  ✗ Follow, Send message request, Share (jak gość)
+  ✗ Brak bannera "Edit mode"
+  ✗ Brak pencil icons na About / Specialties / Certifications
+  ✗ Coach tab pokazuje dane ale bez edycji
+
+Powinien widzieć (Facebook model):
+  ✓ Brak Follow / Message
+  ✓ Banner "Edit mode — click any pencil..."
+  ✓ Guest View toggle
+  ✓ Pencil na każdym bloku coach
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — getUserProfile (BACKEND) — KRYTYCZNE
+═══════════════════════════════════════════════════════════════
+
+W funkcji getUserProfile (lub odpowiednik):
+
+1. Pobierz zalogowanego usera z sesji (auth context).
+2. Pobierz UserProfile po user_id z requestu (param user_id = ?id= z URL).
+3. Ustaw is_self:
+
+   is_self = (
+     loggedInUser != null &&
+     (
+       loggedInUser.id === profile.created_by_id ||
+       loggedInUser.id === profile.user_id ||
+       loggedInUser.email === profile.created_by_email
+     )
+   )
+
+4. Zwróć w response: { ...profile, is_self, is_public_coach, ... }
+
+DEBUG: Dodaj tymczasowo w dev response pole _debug:
+  { logged_in_id, profile_created_by_id, profile_user_id, computed_is_self }
+  Usuń po weryfikacji.
+
+SPRAWDŹ: Czy ?id= w URL to UserProfile.id czy User.id?
+  - Frontend woła: invoke("getUserProfile", { user_id: urlParamId })
+  - Backend MUSI szukać profilu po tym samym polu co frontend wysyła.
+  - Jeśli frontend wysyła UserProfile.id a backend szuka po User.id → is_self zawsze false.
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — SPÓJNOŚĆ ID WE WSZYSTKICH LINKACH
+═══════════════════════════════════════════════════════════════
+
+Audit — każdy link do profilu musi używać TEGO SAMEGO id co getUserProfile:
+
+| Miejsce                    | Obecny link                          | Musi być              |
+|----------------------------|--------------------------------------|-----------------------|
+| My Profile (sidebar)       | /UserProfile?id=???                  | UserProfile.id        |
+| Coach Hub → Public Profile | /UserProfile?id={profile.id}&tab=coach | UserProfile.id      |
+| Coach Hub → Preview guest  | ten sam URL + guest=1                | UserProfile.id        |
+| Directory card             | /UserProfile?id=???                  | UserProfile.id        |
+| Settings → View profile    | /UserProfile?id=???                  | UserProfile.id        |
+
+Jeśli "My Profile" linkuje User.id a Coach Hub linkuje UserProfile.id →
+owner klika My Profile → getUserProfile nie znajduje match → is_self=false.
+
+FIX: Wszędzie UserProfile.id (pole id encji UserProfile).
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — tab=coach MUSI OTWIERAĆ COACH TAB
+═══════════════════════════════════════════════════════════════
+
+URL: /UserProfile?id=X&tab=coach
+
+Przy mount:
+  const tabParam = searchParams.get("tab")
+  if (tabParam === "coach" && profile.is_public_coach) setActiveTab("coach")
+
+Bez tego redirect z Coach Hub ląduje na Overview zamiast Coach tab.
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — NIE DUPLIKUJ EDYTORA W COACH HUB
+═══════════════════════════════════════════════════════════════
+
+CoachBusinessHub NIE powinien mieć własnego formularza edycji profilu.
+Wszystkie akcje "Edit public profile" / "Public Profile" tab → redirect na
+/UserProfile?id={profileId}&tab=coach gdzie działa istniejący gyt z editable.
+
+Usuń/zastąp stary inline editor w Hub jeśli jeszcze istnieje osobno.
+
+═══════════════════════════════════════════════════════════════
+FIX 5 — SETTINGS = TYLKO LIFECYCLE (bez edycji treści)
+═══════════════════════════════════════════════════════════════
+
+Settings → Coach Profile:
+  ✓ View public profile (link)
+  ✓ Hide from directory (toggle)
+  ✓ Pause / Close coach profile
+  ✗ NIE: formularz About, Specialties, Certifications
+
+Treść edytujesz TYLKO na /UserProfile w trybie owner (Facebook model).
+
+═══════════════════════════════════════════════════════════════
+TESTY AKCEPTACJI (MUSZĄ PRZEJŚĆ)
+═══════════════════════════════════════════════════════════════
+
+Konto: dowolny Approved Coach (owner).
+
+T1 — Owner na swoim profilu coach:
+  Login → /UserProfile?id={MOJE_PROFILE_ID}&tab=coach
+  ✓ Brak Follow, brak Send message request
+  ✓ Banner "Edit mode"
+  ✓ Guest View toggle widoczny
+  ✓ Min. 1 pencil icon (About lub Specialties)
+
+T2 — Owner edycja About:
+  Klik pencil przy About → wpisz tekst → Save
+  ✓ Toast success, tekst widoczny po refresh
+
+T3 — Guest View:
+  Toggle Guest View ON
+  ✓ Follow button pojawia się (jak dla gościa)
+  ✓ Brak pencil icons
+  Toggle OFF → z powrotem edit mode
+
+T4 — Coach Hub redirect:
+  /CoachBusinessHub → Public Profile (lub Edit public profile)
+  ✓ Ląduje na /UserProfile?id=...&tab=coach z edit mode (T1)
+
+T5 — Visitor na cudzym profilu:
+  Inne konto → ten sam URL
+  ✓ Follow + Send message request
+  ✓ Brak bannera Edit mode, brak pencils
+
+T6 — My Profile sidebar:
+  Owner klika "My Profile" w menu
+  ✓ Trafia na SWÓJ profil z is_self=true (edit mode na coach tab)
+
+T7 — getUserProfile response:
+  Dla ownera: is_self === true w JSON response
+  Dla visitora: is_self === false
+
+═══════════════════════════════════════════════════════════════
+DEFINICJA DONE
+═══════════════════════════════════════════════════════════════
+
+Owner widzi edycję inline (pencils + banner) na /UserProfile?tab=coach
+na SWOIM profilu — tak jak Facebook. Nie musi iść do Coach Hub żeby edytować About.
+
+Visitor nadal widzi Follow/Message bez pencils.
+
+getUserProfile zwraca poprawne is_self.
+
+Wszystkie linki do profilu używają spójnego UserProfile.id.
