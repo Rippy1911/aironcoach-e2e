@@ -1,0 +1,219 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## Kontekst — przeczytaj przed kodem
+
+To jest **kontynuacja** po 3 poprzednich taskach. Dużo już działa — NIE przepisuj od zera.
+
+### Już wdrożone na prod (https://airon.coach) — NIE PSUJ
+
+| Obszar | Status |
+|--------|--------|
+| Referral capture /join + ?ref__= | ✅ |
+| redeemReferralCode / ensureReferralCode (nie 404 deploy) | ✅ |
+| Brak fałszywego sukcesu referral w UI | ✅ |
+| Menu: klikalny header → profil, My Profile, PresenceFlyout hover w prawo | ✅ |
+| Inline composer na Feedzie | ✅ |
+| show_streak_badge + streak_tier_public + Settings toggle | ✅ |
+| StreakBadge 10/20/50/100 (publicTier mode) | ✅ |
+| getMyFollows bulkUpdate (fix 500 rate limit) | ✅ |
+
+### Co Base44 świadomie odłożyło — TERAZ ZRÓB
+
+1. **P0:** Feed ma 3× „create post" (header + composer + Quick Actions) — usuń duplikaty
+2. **P1:** Profile Hub z tabami + Follows w profilu (nie /MyFollows orphan)
+3. **P2:** Community header ≤96px, bez subtitle, spójny content-start
+4. **P3:** Referral E2E nowe konto LUB scenariusz Testing Agent
+5. **P4:** Screenshoty zalogowanej sesji jako dowód
+
+Najpierw zweryfikuj na prod. Raport: co odtworzyłeś / czego nie.
+
+---
+
+# P0 — ANTI-DUPLIKACJA CTA (ZRÓB PIERWSZE)
+
+## Problem (screenshot użytkownika po publish)
+
+Feed pokazuje jednocześnie:
+- „Create post" w headerze (prawy górny róg)
+- Inline composer „Share a tip, announcement or update…"
+- „Create a post" w Quick Actions (prawy rail)
+
+**To jest błąd UX. Napraw w tej turze.**
+
+## Reguła (wszystkie 4 taby)
+
+```
+Jedna akcja = jeden primary entry point na ekranie.
+Header CTA tylko gdy main column NIE MA już tej samej akcji.
+Quick Actions = skróty do INNYCH tabów/routów, nie duplikat bieżącego taba.
+```
+
+## Instrukcje per tab
+
+### Feed
+- USUŃ header CTA „Create post" — CommunityHeaderCTA zwraca null dla tab=feed
+- USUŃ „Create a post" z Quick Actions na Feedzie
+- Inline composer = JEDYNY primary create post
+- ComposeFAB: ukryj na desktop gdy composer widoczny; mobile OK jako skrót scroll-to-composer
+- Header: tytuł „Community" + taby ONLY. BEZ subtitle. BEZ CTA.
+
+### Teams
+- Header „Create team" = OK
+- Quick Actions: bez „Create team" jeśli jest w headerze
+- Rail: Invite member, Find coach, Go to Feed (cross-tab)
+
+### Messages
+- Header „New message" = OK
+- Quick Actions: bez „New message"
+- Rail: Go to Feed, Go to teams, Find coach
+
+### People
+- Header „Invite" = OK
+- Quick Actions: bez „Invite"
+- Rail: Discover coaches, Go to Feed, My follows
+
+## Pliki
+- components/community/CommunityHeaderCTA.jsx
+- components/community/CommunityShell.jsx
+- components/community/FeedTab.jsx
+- Quick Actions / discovery rail component
+
+## Acceptance P0
+- [ ] Feed: dokładnie 1 widoczny „create post" = composer
+- [ ] Screenshot Feed: brak header CTA, brak Quick Actions create, jest composer
+- [ ] Screenshot Teams/Messages/People: header CTA bez duplikatu w rail
+- [ ] Raport: tabela tab → primary → co usunięte
+
+---
+
+# P1 — PROFILE HUB (duży blok — zrób kompletnie, nie half-build)
+
+## Problem
+Brak centrum tożsamości. Profil rozproszony: Settings, /UserProfile, /MyFollows, menu.
+
+## B1. Menu — dopracuj linki
+
+- „Follows & followers" → `/UserProfile?id=<self>&tab=follows` (NIE /MyFollows)
+- Header popover klik → `/UserProfile?id=<self>`
+
+## B2. UserProfile?id=<self> = Profile Hub
+
+Dodaj taby (jeden komponent tab bar, wspólny layout):
+
+| Tab | Zawartość |
+|-----|-----------|
+| **overview** | Bio, streak summary (własny exact OK), quick stats, Edit profile, link Settings |
+| **activity** | Publiczne posty użytkownika (empty state jeśli brak) |
+| **follows** | **Przenieś całą logikę z /MyFollows** — sub-taby Following (N) \| Followers (N), PersonCard, streak_tier_public |
+| **stats** | Streak, workouts, volume — tylko własne dane |
+| **coach** | Tylko gdy coach capability: bio, services, link Coach Hub |
+
+Route: `/UserProfile?id=<profileId>&tab=<overview|activity|follows|stats|coach>`
+
+**Follows tab szczegóły:**
+- NIE duplikuj hero (avatar+imię już w profilu)
+- PersonCard jak w Community
+- Empty: „You're not following anyone yet" + CTA → /Community?tab=people
+- Reuse getMyFollows (już naprawione bulkUpdate)
+
+## B3. /MyFollows — backward compat
+
+- Redirect do `/UserProfile?id=<self>&tab=follows`
+- Nie usuwaj route od razu — redirect wystarczy
+
+## B4. Profil innego usera
+
+/UserProfile?id=<other>:
+- Hero: avatar, imię, tier, streak_tier_public (opt-in), verified, Follow button
+- Taby: overview \| activity (publiczne)
+- NIE pokazuj prywatnych stats (exact streak, volume) bez opt-in
+
+## Acceptance P1
+- [ ] Własny profil: 4-5 tabów działa
+- [ ] Follows tab = dawny MyFollows bez orphan pustej strony
+- [ ] Menu → profil?tab=follows
+- [ ] /MyFollows redirect
+- [ ] Screenshot każdego taba profilu
+
+---
+
+# P2 — COMMUNITY LAYOUT (po P0)
+
+## Header
+- Max **96px** łącznie (title + tabs)
+- **Usuń subtitle** z headera (tooltip ℹ przy tytule opcjonalnie)
+- Desktop: jeden rząd — Community | taby | CTA (CTA null na Feed)
+- Identyczny padding pod headerem: pt-4 px-4 na wszystkich 4 tabach
+
+## Right rail
+- sticky top-4, items-start, szerokość 280-300px
+- Per-tab Quick Actions wg P0 (bez duplikatów)
+
+## People → Invite
+- ReferralShareCard + InviteByEmail w **jednym Card**
+
+## Empty states
+- Wspólny CommunityEmptyState, py-8
+
+## Acceptance P2
+- [ ] Header ≤96px na 4 tabach (zmierz w devtools)
+- [ ] Content-start ta sama wysokość Y — screenshot porównawczy
+- [ ] 4 screenshoty tabów + invite
+
+---
+
+# P3 — REFERRAL E2E
+
+## Co działa — nie psuj
+/join, ?ref__=, backend redeem, brak fałszywego sukcesu
+
+## Wymagane
+Realny test OAuth signup LUB jeśli niemożliwy — wklej gotowy scenariusz:
+
+```
+1. Anonim: /join/<FOREIGN-CODE>
+2. Assert airon_pending_referral in localStorage
+3. Google OAuth signup → nowe konto
+4. Onboarding complete
+5. Settings → Billing: referral applied
+6. Assert storage cleared
+7. Repeat with /login?ref__=<FOREIGN-CODE>
+```
+
+Dodatkowo: nowe konto po /join → redirect Onboarding (nie /Home)
+
+---
+
+# P4 — STREAK (weryfikacja — większość już jest)
+
+Zweryfikuj bez przepisywania:
+- Settings toggle zapisuje show_streak_badge
+- Karty People/Follows: badge tylko streak_tier_public >= 10 + opt-in
+- Menu/własny profil: exact streak OK
+- Public: tier only (20+), nigdy exact count
+
+Jeśli brak danych testowych: ustaw na koncie testowym current_streak_days=25, show_streak_badge=true, zrób screenshot badge na karcie w People.
+
+---
+
+# Czego NIE robić
+
+- Nie duplikuj create/invite/message w header + main + rail
+- Nie profile mode / coach mode / switcher
+- Nie chowaj Community za coach capability
+- Nie fałszywy sukces referral
+- Nie leakuj exact streak publicznie
+- Nie half-build Profile Hub — albo kompletne taby, albo nie zaczynaj
+
+---
+
+# Raport końcowy (format)
+
+1. **P0–P4 checklist** — każdy punkt ✅/❌
+2. **Tabela anti-duplikacja:** tab | primary action | usunięte duplikaty
+3. **Profile Hub** — lista tabów + screenshot każdego
+4. **Community** — header height px + content-start Y per tab
+5. **Referral** — E2E krok po kroku LUB Testing Agent scenario
+6. **Pliki zmienione** — 1 linia opisu każdego
+7. **Screenshots** — min. 12 (P0 Feed, 4 Community, 5 Profile tabs, streak, menu flyout)
+8. **Follow-ups** — co świadomie zostało

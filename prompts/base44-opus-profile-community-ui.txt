@@ -1,0 +1,282 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## Kontekst i stan obecny (po ostatnim publish)
+
+Potwierdzone na prod https://airon.coach:
+- Referral capture: /join/:code + ?ref__= ✅
+- Backend redeemReferralCode / ensureReferralCode — nie 404 ✅
+- Menu użytkownika: klikalny header, My Profile, flyout Online w prawo ✅
+- Inline composer na Feedzie ✅
+- StreakBadge + show_streak_badge opt-in + streak_tier_public w backendzie ✅ (Base44 wdrożyło Część D)
+- getMyFollows 500 (rate limit) — naprawione bulkUpdate ✅
+
+**Nadal źle / niedomknięte:**
+- **P0 UX:** Feed ma 3× „create post" (header CTA + inline composer + Quick Actions) — TO JEST BŁĄD, napraw natychmiast
+- Brak realnego E2E referral na nowym koncie
+- Profile Hub (taby Overview/Activity/Follows/Stats/Coach) — NIE zrobiony
+- /MyFollows nadal orphan route
+- Community header nadal za wysoki (subtitle, duplikaty CTA)
+- Brak screenshotów z zalogowanej sesji
+
+**Ten task = napraw duplikaty CTA + dokończ Profile Hub + Community layout + referral E2E.**
+
+Najpierw zweryfikuj na produkcji. Nie przepisuj tego, co działa.
+
+---
+
+# CZĘŚĆ C0 — ANTI-DUPLIKACJA CTA (P0 — ZRÓB NAJPIERW)
+
+## Problem (potwierdzone na prod, screenshot użytkownika)
+
+Na Feedzie użytkownik widzi TRZY sposoby na to samo:
+1. Pomarańczowy przycisk „Create post" w prawym górnym rogu headera
+2. Duży inline composer „Share a tip, announcement or update…" w main column
+3. „Create a post" w Quick Actions (prawy rail)
+
+To nie ma sensu. Usuń duplikaty.
+
+## Reguła (obowiązuje WSZYSTKIE 4 taby Community)
+
+```
+Header CTA = TYLKO gdy main column NIE MA już primary action dla tej samej akcji.
+Quick Actions = skróty do INNYCH tabów/routów, NIE duplikat bieżącego taba.
+Jedna akcja = jeden primary entry point na ekranie.
+```
+
+## Konkretne instrukcje per tab
+
+### Feed
+- USUŃ header CTA „Create post" — całkowicie, na desktop i mobile
+- USUŃ „Create a post" z Quick Actions rail na Feedzie
+- Inline composer u góry feedu = JEDYNY primary „create post"
+- ComposeFAB = opcjonalny secondary tylko na mobile (skrót), ukryj gdy composer widoczny
+- Header Feed = tylko: tytuł „Community" + taby (Feed/Teams/Messages/People). BEZ subtitle. BEZ CTA.
+
+### Teams
+- Header CTA „Create team" = OK (jeśli main column nie ma inline create)
+- Quick Actions: NIE dodawaj „Create team" jeśli jest w headerze
+- Quick Actions na Teams: Invite member, Browse directory, My trainees — skróty cross-tab
+
+### Messages
+- Header CTA „New message" = OK
+- Quick Actions: NIE duplikuj „New message"
+- Quick Actions na Messages: Go to Feed, Find a coach, Go to teams
+
+### People
+- Header CTA „Invite" = OK
+- Quick Actions: NIE duplikuj „Invite"
+- Quick Actions na People: Discover coaches, Go to Feed, My follows
+
+## Pliki do edycji
+- components/community/CommunityHeaderCTA.jsx — zwracaj null dla tab=feed
+- components/community/CommunityShell.jsx — nie renderuj headerAction na Feedzie
+- components/community/FeedTab.jsx — inline composer = sole primary
+- prawy rail / Quick Actions component — per-tab lista BEZ duplikatów (feed: bez create post)
+
+## Acceptance (obowiązkowe)
+- Feed: dokładnie JEDEN widoczny entry point „create post" = inline composer
+- Screenshot Feed pokazujący: brak „Create post" w headerze, brak w Quick Actions, jest composer
+- Screenshot Teams/Messages/People: header CTA jest, Quick Actions go NIE powtarza
+- Raport: tabela per tab — co usunięte, co zostało jako primary
+
+---
+
+# CZĘŚĆ A — Referral E2E (domknięcie)
+
+## Co nie psuj
+- /join/:refCode, ?ref__= capture
+- /r/:token = przepisy
+- Toast sukcesu tylko przy applied===true
+- Brak fałszywego „Enjoy your 7 days of Premium"
+
+## Do zrobienia
+1. Realny test OAuth signup (obowiązkowy — interaktywna przeglądarka):
+   - Anonimowo: /join/<VALID-FOREIGN-CODE>
+   - Google OAuth → nowe konto → onboarding
+   - Settings → Billing: referral applied
+   - localStorage airon_pending_referral wyczyszczony
+   - Powtórz z /login?ref__=<VALID-FOREIGN-CODE>
+2. Po sukcesie /join → redirect nowych kont do Onboarding (nie /Home)
+3. Jeśli OAuth niemożliwy — gotowy scenariusz dla Testing Agent z assertami
+
+---
+
+# CZĘŚĆ B — Profil jako centrum nawigacji (Profile Hub)
+
+## Problem
+Brak jednego miejsca „to ja". Profil rozproszony: Settings, /UserProfile, /MyFollows, Community.
+
+## B1. Dolne menu (sidebar footer popover) — już częściowo OK, dopracuj
+
+- Header (avatar + imię) → klik = /UserProfile?id=<myProfileId>
+- Streak badge obok imienia (streak >= 10)
+- Online = flyout w prawo na hover (NIE accordion w dół)
+- „Follows & followers" → /UserProfile?id=<self>&tab=follows (NIE /MyFollows)
+
+## B2. Profile Hub — ZRÓB TO (duży blok, nie half-build)
+
+/UserProfile?id=<self> = centrum tożsamości.
+
+Taby:
+- Overview — bio, streak summary, quick stats, link Settings
+- Activity — publiczne posty
+- Follows — Following | Followers (cała logika z /MyFollows, PersonCard)
+- Stats — streak, workouts, volume (własne dane)
+- Coach — tylko gdy coach capability
+
+/MyFollows → redirect 301 do /UserProfile?id=<self>&tab=follows
+
+## B3. Profil innych
+- Hero: avatar, imię, tier, streak badge (public opt-in), verified
+- Taby: Overview | Activity
+- Follow/Unfollow
+- NIE pokazuj prywatnych stats bez opt-in
+
+---
+
+# CZĘŚĆ C — Community UI (layout po usunięciu duplikatów)
+
+## Problem
+Header za wysoki. Subtitle zabiera miejsce. Content startuje za nisko. Right rail opada.
+
+## Docelowy layout (po C0)
+
+Desktop:
+┌─────────────────────────────────────────────────────────────────┐
+│ Community          Feed · Teams · Messages · People    [CTA*]   │  max 96px
+├──────────────────────────────────────┬──────────────────────────┤
+│ MAIN CONTENT                         │ DISCOVERY RAIL (sticky)  │
+└──────────────────────────────────────┴──────────────────────────┘
+* CTA tylko Teams/Messages/People — NIE na Feedzie
+
+### C1. Header
+- Max 96px łącznie
+- Tytuł „Community" — BEZ subtitle (subtitle → tooltip ℹ albo usuń)
+- Taby inline z tytułem (desktop: jeden rząd)
+- Header CTA: patrz C0 — null na Feedzie
+
+### C2. Header CTA per tab (po C0)
+
+| Tab | Header CTA | Primary w main column |
+|-----|------------|----------------------|
+| Feed | **BRAK** | inline composer |
+| Teams | Create team | brak inline → header OK |
+| Messages | New message | brak inline → header OK |
+| People | Invite | brak inline form → header OK |
+
+CTA label zawsze z tekstem (mobile + desktop) — ale TYLKO tam gdzie tab ma header CTA.
+
+### C3. Spójność
+- Identyczny padding pod headerem na 4 tabach: pt-4 px-4
+- Right rail: items-start, sticky top-4, szerokość 280-300px
+- People Invite: ReferralShareCard + InviteByEmail w jednym Card
+- CommunityEmptyState wspólny, py-8
+
+### C4. Feed
+- Inline composer = sole primary (C0)
+- Sub-filtry feedu (Following/Discover/My Teams/Coaches/My Posts) — zostaw, ale nie duplikuj create
+
+### C5. People
+- Search + filtry w jednym rzędzie
+- Grid 2 kolumny desktop, 1 mobile
+- PersonCard ze streak_tier_public
+
+### C6. Screenshoty (obowiązkowe)
+1. Feed — brak header CTA, jest composer, brak create w Quick Actions
+2. Teams — header CTA, brak duplikatu w rail
+3. Messages — j.w.
+4. People + invite
+5. Porównanie content-start Y na 4 tabach
+
+---
+
+# CZĘŚĆ D — Streak badges (dokończ jeśli brakuje)
+
+Część wdrożona (show_streak_badge, streak_tier_public). Zweryfikuj i domknij:
+
+- Settings → Privacy toggle działa
+- Badge na kartach People/Follows tylko przy opt-in + tier >= 10
+- Menu/własny profil: exact streak (prywatne OK)
+- Public cards: tier only (10+/20+/50+/100+), nigdy exact count
+- Test: profil streak=25, opt-in on → badge 20+ na karcie w People
+
+---
+
+# CZĘŚĆ E — Quick wins
+
+- PersonCard wspólny: Community, Follows tab, Feed author
+- Skeleton loaders zamiast pustego ekranu
+- Trainee Profile (nie Athlete) w copy
+- Community 500 errors: graceful inline retry (nie blank screen)
+
+---
+
+# Czego NIE robić
+
+- Nie duplikuj create/invite/new message w headerze + main + rail na tym samym tabie
+- Nie wprowadzaj profile mode / coach mode / profile switcher
+- Nie chowaj Community za coach capability
+- Nie pokazuj fałszywego sukcesu referral
+- Nie leakuj exact streak publicznie
+
+---
+
+# Pliki
+
+Community (C0 priorytet):
+- components/community/CommunityHeaderCTA.jsx
+- components/community/CommunityShell.jsx
+- components/community/FeedTab.jsx
+- prawy rail / Quick Actions component
+- pages/Community.jsx
+
+Profil:
+- pages/UserProfile.jsx
+- pages/MyFollows.jsx (redirect)
+- SidebarProfilePopover / ProfileModeMenu
+
+Streak (weryfikacja):
+- components/streak/StreakBadge.jsx
+- lib/streak.js
+- streak/AchievementsSettings.jsx
+
+Referral:
+- lib/pendingReferral.js
+- pages/JoinReferral.jsx
+
+---
+
+# Weryfikacja końcowa
+
+## C0 Anti-duplikacja (P0)
+- [ ] Feed: 1 entry point create post (composer only)
+- [ ] Feed: brak Create post w headerze
+- [ ] Feed: brak Create post w Quick Actions
+- [ ] Teams/Messages/People: header CTA bez duplikatu w rail
+
+## Profil
+- [ ] Profile Hub z tabami
+- [ ] Follows w profilu, /MyFollows redirect
+- [ ] Menu → profil?tab=follows
+
+## Community layout
+- [ ] Header <= 96px, bez subtitle
+- [ ] Content-start ta sama Y na 4 tabach
+- [ ] 5+ screenshotów
+
+## Referral
+- [ ] E2E nowe konto LUB scenariusz Testing Agent
+
+## Streak
+- [ ] Opt-in toggle + badge na kartach (tylko opt-in)
+
+---
+
+# Raport końcowy
+
+1. Reproduced / not reproduced per sekcja
+2. Tabela C0: tab → primary action → co usunięte
+3. Pliki zmienione
+4. Screenshoty (min. 10)
+5. Referral E2E lub Testing Agent scenario
+6. Follow-ups
