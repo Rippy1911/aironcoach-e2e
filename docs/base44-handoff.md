@@ -107,15 +107,30 @@ Bez chevron: My Profile, Coach Hub, Follows, Settings, Manage plan — direct na
 | Plik | Kiedy użyć |
 |------|------------|
 | `docs/base44-handoff.md` | Ten plik — kontekst |
-| `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | **P0 TERAZ** — Coach Hub po create profile |
-| `prompts/base44-prompt-04-menu-profile-hub.txt` | Menu flyout + Profile Hub (po P0 coach) |
+| `prompts/base44-prompt-05-coach-hub-getCoachStats.txt` | Coach Hub getCoachStats 404 |
+| `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt` | **Coach lifecycle** — pause / deactivate / reactivate / delete |
+| `prompts/base44-prompt-04-menu-profile-hub.txt` | Menu flyout + Profile Hub |
+
+---
+
+## Model coach capability (decyzja produktowa 2026-06-24)
+
+- **Jedno konto** — coach to capability, nie osobny profil/mode
+- **Poziom 1 Pauza:** accepting_clients + coach_profile_visibility (soft)
+- **Poziom 2 Dezaktywacja:** is_coach false, coach_status inactive, dane zachowane, reactivate możliwy
+- **Poziom 3 Delete:** trwałe usunięcie danych coach public (account zostaje)
+- **NIE:** „switch to user account", profile mode switcher
+- **Dziś w prod:** brak deactivate/remove coach flow (tylko visibility toggles)
+
+Prompt: `prompts/base44-prompt-06-coach-lifecycle-deactivate.txt`
 
 ---
 
 ## Priorytety następny task
 
-0. **P0-COACH** — getCoachStats 404 + Coach Hub empty state po create profile (**NOWY BUG**)
-1. **P0-B** — napraw Online flyout + usuń fałszywe chevrony (My Profile, Coach Hub)
+0. **P0-COACH** — getCoachStats 404 + Coach Hub empty state (prompt 05)
+0b. **Coach lifecycle** — pause / deactivate / reactivate (prompt 06)
+1. **P0-B** — napraw Online flyout + fałszywe chevrony
 2. **P1** — Profile Hub kompletny + redirect MyFollows
 3. **P2** — Community dokończenie (content-start, Invite card)
 4. **P3** — Referral E2E / Testing Agent scenario
