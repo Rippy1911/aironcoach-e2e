@@ -1,0 +1,191 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## Kontekst
+
+Kontynuacja po Task 4 (prompt 03). P0 anti-duplikacja Feed — wdrożone. Teraz napraw menu użytkownika + zbuduj Profile Hub.
+
+### Już działa — NIE PSUJ
+
+- Referral capture /join + ?ref__=, backend redeem, brak fałszywego sukcesu
+- Feed: jeden create post = inline composer (header CTA usunięty, rail bez create, FAB ukryty desktop)
+- Community header bez subtitle ~90px
+- Streak show_streak_badge + streak_tier_public + Settings toggle
+- getMyFollows bulkUpdate (fix 500)
+- Menu: klikalny header → profil, View my profile
+
+### Bugi zgłoszone przez użytkownika (P0-B — ZRÓB PIERWSZE)
+
+Screenshot menu (dolny lewy popover):
+
+1. **Online** — hover NIE pokazuje flyout z boku (Away/Busy/Offline). Kod PresenceFlyout istnieje (`left:100%`) ale panel niewidoczny. Prawdopodobnie parent popover ma `overflow:hidden` i obcina flyout.
+
+2. **My Profile** — ma chevron `>` ale to zwykła nawigacja onClick. Brak submenu. Chevron myli użytkownika.
+
+3. **Coach Hub** — to samo: chevron `>` + navigate, bez flyout. Mylące.
+
+4. **Follows & followers** — bez chevron OK, ale linkuje do `/MyFollows` zamiast profil?tab=follows (napraw w P1).
+
+---
+
+# P0-B — NAPRAW MENU UŻYTKOWNIKA (P0 — przed Profile Hub)
+
+## Reguła chevronów (obowiązkowa)
+
+```
+chevron (>) TYLKO gdy wiersz ma REALNY flyout/submenu po hover/click.
+BEZ chevron: My Profile, Coach Hub, Follows, Account settings, Manage plan, Help — to direct navigation (onClick → route).
+```
+
+## Online status flyout — napraw
+
+Obecne zachowanie: hover na „Online" → nic nie widać z boku.
+
+Docelowe:
+- Hover (lub focus) na wierszu Online → **flyout panel po PRAWEJ** stronie popovera
+- Opcje: Online / Away / Busy / Offline + kolorowe kropki + checkmark na aktywnym
+- Główny popover **NIE rośnie w pionie**
+- Flyout widoczny nad sidebarem (nie obcięty)
+
+## Fix techniczny (zrób który działa)
+
+1. Popover wrapper: `overflow: visible` (nie hidden)
+2. Jeśli nadal clipped → render flyout przez **React Portal** (`createPortal`) do `document.body` z `position: fixed` i coords z `getBoundingClientRect()` anchor button
+3. z-index flyout > popover > sidebar (min 100000)
+4. Hover bridge: mały overlap między wierszem a flyout (marginLeft 0-6px) żeby nie znikał przy ruchu myszy
+5. onMouseEnter/onMouseLeave z debounce 150ms (już jest ~160ms — OK)
+
+## Usuń fałszywe chevrony
+
+W MenuRow / ProfileModeMenu:
+- My Profile: `chevron={false}` — tylko onClick navigate
+- Coach Hub: `chevron={false}` — tylko onClick navigate
+- Online (PresenceFlyout): chevron OK — bo jest flyout
+- Header „View my profile" / avatar click: bez chevron w headerze jeśli myli (opcjonalnie zostaw subtelny → tylko w headerze jako hint nawigacji)
+
+## Pliki
+
+- `PresenceFlyout.jsx` (lub vwt)
+- `ProfileModeMenu` / `SidebarProfilePopover`
+- `MenuRow` component (prop chevron)
+
+## Acceptance P0-B
+
+- [ ] Hover Online → flyout widoczny PO PRAWEJ z 4 statusami (screenshot)
+- [ ] My Profile — BEZ chevron, klik → profil
+- [ ] Coach Hub — BEZ chevron, klik → CoachBusinessHub
+- [ ] Popover nie rośnie w pionie po hover Online
+- [ ] Flyout nie obcięty przez sidebar
+
+---
+
+# P1 — PROFILE HUB (kompletny — nie half-build)
+
+## Problem
+
+Brak centrum tożsamości. Profil rozproszony.
+
+## B1. Menu linki
+
+- „Follows & followers" → `/UserProfile?id=<self>&tab=follows` (NIE /MyFollows)
+- Header popover klik → `/UserProfile?id=<self>`
+
+## B2. /UserProfile?id=<self> — taby
+
+| Tab | route param | Zawartość |
+|-----|-------------|-----------|
+| overview | tab=overview | Bio, streak summary (exact OK), quick stats, Edit profile, link Settings |
+| activity | tab=activity | Publiczne posty (empty state jeśli brak) |
+| follows | tab=follows | **Cała logika /MyFollows** — Following \| Followers, PersonCard, getMyFollows |
+| stats | tab=stats | Streak, workouts, volume — własne dane |
+| coach | tab=coach | Tylko coach capability: bio, services, Coach Hub link |
+
+Jeden wspólny tab bar + hero (avatar, imię, tier, streak badge, Edit/Share/Settings).
+
+Follows tab:
+- NIE duplikuj hero
+- PersonCard + streak_tier_public
+- Empty: „You're not following anyone yet" + CTA → /Community?tab=people
+
+## B3. /MyFollows
+
+Redirect → `/UserProfile?id=<self>&tab=follows` (route zostaje dla backward compat)
+
+## B4. Profil obcego usera
+
+/UserProfile?id=<other>:
+- Hero + Follow button
+- Taby: overview | activity
+- streak_tier_public tylko opt-in
+- NIE pokazuj prywatnych stats
+
+## Acceptance P1
+
+- [ ] 4-5 tabów działa na własnym profilu
+- [ ] Follows tab = dawny MyFollows
+- [ ] Menu → profil?tab=follows
+- [ ] /MyFollows redirect
+- [ ] Screenshot każdego taba
+
+---
+
+# P2 — COMMUNITY dokończenie (po P0-B + P1)
+
+- Identyczny content-start Y na 4 tabach (pt-4 px-4)
+- People Invite: ReferralShareCard + InviteByEmail w jednym Card
+- CommunityEmptyState wspólny py-8
+- Right rail sticky top-4, 280-300px, bez duplikatów CTA (P0 już zrobione)
+
+## Acceptance P2
+
+- [ ] Screenshot porównawczy content-start 4 taby
+- [ ] Screenshot People invite (jeden Card)
+
+---
+
+# P3 — REFERRAL E2E
+
+OAuth signup test LUB gotowy scenariusz Testing Agent:
+
+```
+1. Anonim: /join/<FOREIGN-CODE>
+2. Assert airon_pending_referral
+3. Google OAuth → nowe konto → onboarding
+4. Settings → Billing: referral applied
+5. Assert storage cleared
+6. Repeat /login?ref__=<CODE>
+```
+
+Nowe konto po /join → redirect Onboarding (nie /Home)
+
+---
+
+# P4 — STREAK weryfikacja
+
+- Settings toggle działa
+- Badge na kartach tylko opt-in + tier >= 10
+- Test: current_streak_days=25, show_streak_badge=true → screenshot badge w People
+
+---
+
+# Czego NIE robić
+
+- Nie chevron na direct navigation (My Profile, Coach Hub)
+- Nie accordion Online w dół — tylko flyout w prawo
+- Nie half-build Profile Hub
+- Nie duplikuj create post na Feed
+- Nie profile mode switcher
+- Nie leakuj exact streak publicznie
+
+---
+
+# Raport końcowy
+
+1. P0-B checklist + screenshot Online flyout po prawej
+2. P1 Profile Hub — screenshot każdego taba
+3. Tabela chevronów: wiersz | chevron yes/no | powód
+4. P2-P4 checklist
+5. Pliki zmienione
+6. Min. 10 screenshotów zalogowanej sesji (menu flyout, profil taby, community)
+7. Follow-ups
+
+Kolejność pracy: **P0-B → P1 → P2 → P3 → P4**. Nie zaczynaj P1 dopóki P0-B nie ma screenshotu flyout.
