@@ -18,4 +18,6 @@ Airon Coach: jedno konto, coach = capability, Trainee nie Athlete, bez switchera
 
 **20 — Profil coacha:** oferty na Coach tab; ołówek + inline (oferta: szybka edycja + link do Services); Guest View = tylko toggle; przy aktywacji coacha pytanie o publiczność **default ON**; personal prywatny, default tab Coach, Overview zostaje ale nie domyślny; gość: CTA Request coaching + Message.
 
+**23 — Coach Hub OS:** jeśli robisz większy UX pass, potraktuj Coach Hub jako centrum operacyjne coacha. Usuń Marketing z sidebaru. Wchłoń edycję publicznej wizytówki do Hub → Profile. Hub ma Overview / Profile / Offers / opcjonalnie Clients; Overview pokazuje status, completeness, next best action i public preview. Własny profil startuje w Edit mode, Guest View tylko toggle. Settings nie dubluje edytora profilu.
+
 Na koniec: krótko co naprawione + jak przetestować w UI (bez listy plików).

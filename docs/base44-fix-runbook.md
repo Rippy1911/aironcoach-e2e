@@ -2,9 +2,9 @@
 
 **Wklej do Base44 (ma kontekst apki — tylko opis problemu i oczekiwane zachowanie):**
 
-→ `prompts/base44-prompt-22-coach-hub-command-center.txt` (**wklej teraz** — Hub = centrum coacha, usuń Marketing z nav, wchłonie edycję profilu)
+→ `prompts/base44-prompt-23-coach-hub-operating-system.txt` (**wklej teraz** — finalna wersja po audycie 21/22: Hub = centrum operacyjne coacha, bez Marketing w sidebarze)
 
-→ `prompts/base44-prompt-21-coach-ux-simplify-marketing-edit.txt` (uzupełnienie: profil, ołówki, Guest view — 22 nadpisuje nawigację Marketing vs Hub)
+→ `docs/prompt-21-22-audit.md` (dlaczego 23 zastępuje 21/22)
 
 → `prompts/base44-opus-phase2-14-19.txt` (14–19, po 20 lub razem jeśli wolisz)
 
