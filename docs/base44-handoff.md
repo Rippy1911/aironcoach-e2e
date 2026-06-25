@@ -194,13 +194,23 @@ Po zapisie profilu coacha user widzi **inny profil** niż edytował (np. Marek N
 - `bRe()` ma status `ambiguous` przy wielu coach rows — problem znany w kodzie, nieobsłużony w UI
 - My Profile → `/UserProfile?id=${canonicalProfile.id}` — jeśli canonical źle wybrany, widać zły profil
 
-### Fix
+### Fix — **WDROŻONE NA PROD (2026-06-25)**
+
+Bundle `assets/index-CxFQPeji.js`:
+- `UserProfile.filter({ created_by_id: auth.id })` w `useMyProfile` / coach save
+- `yse()` filtruje wiersze po `created_by_id`, potem email (bez service rows)
+- `uu(rows, authUser)` — tie-break po `created_date`, nie `Fz()` coach score dla self-profile
+- Eksportowana nazwa `getCanonicalUserProfile` **nie występuje** — logika jest inline; to OK
+
+**Prompt:** `prompts/base44-prompt-07-duplicate-profile-fix.txt` — **DONE**
+
+Weryfikacja: `node scripts/coach-create-probe.mjs` → My Profile = Loki Stream, Hub/Services odblokowane.
+
+### Fix (oryginalna spec)
 1. Jeden UserProfile per user (merge duplikatów)
-2. Zastąpić `uu()`/`Fz()` dla my profile → `getCanonicalUserProfile` (by created_by_id, nie coach score)
+2. Zastąpić `uu()`/`Fz()` dla my profile → canonical by `created_by_id` (shipped as `yse`/`uu`)
 3. Coach save na tym samym wierszu co personal
 4. My Profile zawsze self canonical id
-
-**Prompt:** `prompts/base44-prompt-07-duplicate-profile-fix.txt`
 
 ---
 
@@ -229,12 +239,12 @@ node scripts/coach-create-probe.mjs   # wypełnia + zapisuje coach profile
 node scripts/qa-sweep.mjs
 ```
 
-**Bloker prod:** oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**.
+**Bloker prod:** ~~oba konta testowe → canonical profile = **mkpiwecki** → coach save **403**~~ **rozwiązany 2026-06-25.**
 
-**Rerun 2026-06-25:** anonymous smoke PASS; bundle `assets/index-BX4KRVl9.js`; `canonicalProfileHelper=false`; `coachTabLast=true`; `archiveOfferLabel=false`; coach create nadal 403.
+**Rerun 2026-06-25 (po deploy prompt 07):** bundle `assets/index-CxFQPeji.js`; `canonicalByAuthIdQuery=true`; `coachTabLast=false`; `archiveOfferLabel=true`; coach create PASS; My Profile = Loki Stream (`6a3ca50c65a59273f399090e`).
 
-**Nowa sekwencja promptów (używać teraz):**
-1. `prompts/base44-prompt-09-canonical-profile-hotfix.txt`
+**Sekwencja promptów (następne kroki):**
+1. ~~`prompts/base44-prompt-09-canonical-profile-hotfix.txt`~~ — superseded (07 done)
 2. `prompts/base44-prompt-10-coach-hub-stats-after-canonical.txt`
 3. `prompts/base44-prompt-11-coach-card-services-layout.txt`
 4. `prompts/base44-prompt-12-profile-menu-flyout-chevrons.txt`
@@ -244,4 +254,4 @@ node scripts/qa-sweep.mjs
 
 ## Ostatnia aktualizacja
 
-2026-06-25 — rerun testów + runbook promptów; duplicate profile blocker nadal aktywny.
+2026-06-25 — prompt 07 wdrożony na prod; canonical profile + coach funnel PASS; następne: prompty 10–13.

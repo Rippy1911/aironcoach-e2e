@@ -58,6 +58,10 @@ const report = {
     communityFeedMaxW: js.includes('max-w-[680px]'),
     duplicateProfileHelpers: js.includes('uu(') && js.includes('Fz('),
     canonicalProfileHelper: js.includes('getCanonicalUserProfile'),
+    // Prompt 07 ships inline helpers (not exported name getCanonicalUserProfile)
+    canonicalByAuthIdQuery: /UserProfile\.filter\(\{created_by_id:/.test(js),
+    profileRowsFilterHelper: js.includes('function yse('),
+    canonicalPickUsesAuthUser: /function uu\(/.test(js) && js.includes('created_by_id'),
   },
   pages: {
     UserProfile: { maxW: maxWs(up), tabKeys },

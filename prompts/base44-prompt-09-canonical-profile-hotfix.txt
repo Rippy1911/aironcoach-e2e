@@ -6,6 +6,10 @@ Follow the existing Airon Coach architecture:
 
 # P0 HOTFIX — canonical self UserProfile is still wrong on prod
 
+> **STATUS (2026-06-25): SUPERSEDED — do not paste unless regression.**  
+> Prompt 07 fix is live on prod (`yse`/`uu` + `created_by_id` query). Verified: My Profile → Loki Stream; coach create → Hub.  
+> Use prompts **10 → 13** for remaining work. Keep this file as regression spec only.
+
 This is a corrective follow-up to the previous duplicate profile task. The previous attempt did not fix prod.
 
 ## Current prod verification

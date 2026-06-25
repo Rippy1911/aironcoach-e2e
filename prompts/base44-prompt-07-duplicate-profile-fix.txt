@@ -2,7 +2,28 @@ Follow the established unified-account architecture and capability-based coach U
 
 ## P0 BUG — Zły profil po zapisie coacha / My Profile pokazuje inne dane niż tworzę
 
-### Latest prod verification (2026-06-25)
+### Latest prod verification (2026-06-25 — **FIX DEPLOYED**)
+
+Logged-in Playwright on `lokistakontakt@gmail.com`:
+
+| Check | Result |
+|-------|--------|
+| My Profile | `/UserProfile?id=6a3ca50c65a59273f399090e` — **Loki Stream** (not mkpiwecki) |
+| Create coach profile | Saves OK → redirects to `CoachBusinessHub` |
+| Coach Hub / Services | Unlocked — “Loki Stream Coach”, Services page loads |
+
+Bundle `assets/index-CxFQPeji.js` implements canonical selection via `yse()` + `uu(authUser)` with `UserProfile.filter({ created_by_id: auth.id })` — equivalent to this prompt’s `getCanonicalUserProfile` spec (different export name).
+
+Retest:
+
+```bash
+TEST_PRO_EMAIL=lokistakontakt@gmail.com node scripts/coach-create-probe.mjs
+node scripts/ui-audit-prod.mjs
+```
+
+---
+
+### Earlier prod verification (2026-06-25 morning — before deploy)
 
 Logged-in Playwright on both test accounts:
 

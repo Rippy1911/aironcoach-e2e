@@ -113,6 +113,41 @@ if (await sebLink.isVisible({ timeout: 5000 }).catch(() => false)) {
   }
 }
 
+// My Profile — canonical self row (prompt 07 regression)
+await go('/Home', null);
+const profileTriggerMp = page.locator(`text=${USER_SLUG}`).first();
+if (await profileTriggerMp.isVisible({ timeout: 3000 }).catch(() => false)) {
+  await profileTriggerMp.click({ force: true });
+} else {
+  const onlineTriggerMp = page.getByText('Online', { exact: true }).first();
+  if (await onlineTriggerMp.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await onlineTriggerMp.click({ force: true });
+  }
+}
+await page.waitForTimeout(1500);
+const myProfileLink = page.getByText('My Profile', { exact: true });
+if (await myProfileLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+  await myProfileLink.click({ force: true });
+  await page.waitForTimeout(6000);
+  const profileUrl = page.url();
+  const profileHeadings = await page.evaluate(() =>
+    [...document.querySelectorAll('h1,h2,h3')].map((e) => e.textContent?.trim()).slice(0, 3),
+  );
+  await page.screenshot({ path: path.join(OUT, '28-my-profile.png') });
+  const wrongId = '698867e38ffb4566bd59e048';
+  if (profileUrl.includes(wrongId) || /mkpiwecki/i.test(profileHeadings.join(' '))) {
+    add(
+      'P0',
+      'UserProfile',
+      'My Profile opens wrong canonical row',
+      `Logged in as ${EMAIL} → ${profileUrl} headings=${profileHeadings.join('|')}`,
+      '28-my-profile.png',
+    );
+  }
+} else {
+  add('P1', 'Menu', 'My Profile link not found in profile menu', `Logged in as ${EMAIL}`);
+}
+
 // Menu flyout
 await go('/Home', null);
 const profileTrigger = page.locator(`text=${USER_SLUG}`).first();
@@ -157,12 +192,6 @@ for (const e of apiUnique) {
       reportedRateLimit = true;
     }
   }
-}
-
-// Wrong profile universal
-const wrongProfile = findings.some((f) => f.title.includes('mkpiwecki')) || apiUnique.some((e) => e.url?.includes('698867e38ffb4566bd59e048'));
-if (!findings.some((f) => f.title.includes('My Profile opens wrong'))) {
-  add('P0', 'UserProfile', 'My Profile opens mkpiwecki for any test account', `Logged in as ${EMAIL} → UserProfile?id=698867e38ffb4566bd59e048`, '28-my-profile.png');
 }
 
 const report = {
