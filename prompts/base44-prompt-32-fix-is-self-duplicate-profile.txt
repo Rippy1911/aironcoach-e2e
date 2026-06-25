@@ -1,0 +1,166 @@
+PROMPT 32 — FIX: Owner nadal widzi Follow (is_self=false mimo Prompt 31)
+
+═══════════════════════════════════════════════════════════════
+STATUS PO PROMPT 31 — CO DZIAŁA, CO NIE
+═══════════════════════════════════════════════════════════════
+
+✅ ZWERYFIKOWANE AUTOMATYCZNIE NA PRODUKCJI (Playwright, 2026-06-25):
+Konto: lokistakontakt@gmail.com
+Bundle: index-iPelX33H.js (nowy deploy)
+
+/UserProfile?id=6a3ca50c65a59273f399090e&tab=coach:
+  getUserProfile: is_self:true, is_coach:true, is_public_coach:false
+  _debug.computed_is_self: true, self_via: "profile_id_match"
+  UI: Edit banner ✓, Guest View ✓, Coach tab ✓, Specialties ✓, 27 pencils ✓
+  Brak Follow / Send message request ✓
+
+My Profile (sidebar) → ten sam URL z tab=coach ✓
+
+PROMPT 31 NAPRAWIŁ BUG #2 (private coach → Coach tab dla ownera).
+Backend _debug block jest na prod.
+
+❌ UŻYTKOWNIK (damm ian / profil "dasdasdasdasd") NADAL WIDZI:
+  Follow + Send message request
+  Brak Edit banner / brak pencils
+  → getUserProfile zwraca is_self:false dla TEGO konta (BUG #1 nadal aktywny)
+
+═══════════════════════════════════════════════════════════════
+DIAGNOZA — DLACZEGO PROMPT 31 NIE POMÓGŁ DAMM IAN
+═══════════════════════════════════════════════════════════════
+
+Base44 dodał email-match w getUserProfile, ale to nie wystarcza gdy:
+
+A) DUPLIKAT UserProfile — user ma 2+ wiersze UserProfile:
+   - My Profile / sidebar ładuje profil A (created_by_id = me.id)
+   - URL ?id= wskazuje profil B (inny wiersz, inny created_by_id)
+   - getUserProfile(B) → is_self:false bo B.created_by_id !== me.id
+   - Frontend już zna myProfileId (p) z UserProfile.filter, ale NIE używa go
+     do override is_self — polega wyłącznie na API
+
+B) ZŁY LINK WEJŚCIA — user wchodzi z Coach Directory / bookmark / share link
+   na profil który NIE jest jego canonical _my_profile_id
+
+C) ADMIN-SEEDED PROFILE — profil utworzony przez admina, created_by_id wskazuje
+   admina nie usera; email też może się różnić
+
+D) CACHE — user na starym bundle (index-Df4A2RFR.js). Wymuś hard refresh.
+   (Mało prawdopodobne jeśli widzi nowe elementy UI)
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — FRONTEND (wyt / UserProfile) — NATYCHMIASTOWY, KRYTYCZNY
+═══════════════════════════════════════════════════════════════
+
+Strona JUŻ ładuje myProfileId:
+  UserProfile.filter({ created_by_id: me.id }) → p (state)
+
+Dziś:
+  _ = profile.is_self === true
+
+ZMIEŃ NA:
+  _ = profile.is_self === true
+      || (!!p && !!r && p === r)           // URL id = mój canonical profile
+      || (!!p && profile.id === p)          // response id = mój profile
+
+  // r = searchParams.get("id")
+  // p = myProfileId ze state
+
+To naprawia UI nawet gdy backend chwilowo zwraca is_self:false,
+o ile user wszedł na SWÓJ profil (poprawne ?id=).
+
+editable = _ && !guestView  (bez zmian)
+showCoachTab = is_public_coach || (_ && is_coach && !guestView)  (bez zmian z Prompt 31)
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — BACKEND (getUserProfile) — PEŁNA LISTA OWNED PROFILES
+═══════════════════════════════════════════════════════════════
+
+Po resolve profile + auth me:
+
+  const owned = await UserProfile.filter({ created_by_id: me.id })
+  // ORAZ fallback: filter({ created_by: me.email })
+
+  const ownedIds = new Set(owned.map(p => p.id))
+
+  is_self = (
+    ownedIds.has(profile.id) ||
+    profile.created_by_id === me.id ||
+    (profile.created_by || '').toLowerCase() === (me.email || '').toLowerCase()
+  )
+
+  // NIE blokuj email-match dla zwykłych userów jeśli profile jest w ownedIds
+
+  _my_profile_id = owned[0]?.id  // canonical — najnowszy by updated_date
+  _debug: {
+    me_id, me_email,
+    requested_profile_id: profile.id,
+    owned_profile_ids: [...ownedIds],
+    computed_is_self: is_self,
+    self_via: is_self ? (ownedIds.has(profile.id) ? 'owned_ids' : 'id_or_email') : 'none'
+  }
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — MY PROFILE LINK ZAWSZE CANONICAL ID
+═══════════════════════════════════════════════════════════════
+
+Sidebar "My Profile" buduje URL z o.id (UserProfile entity).
+
+Upewnij się że o to TEN SAM wiersz co _my_profile_id z getUserProfile
+(najnowszy owned profile, nie stary duplikat).
+
+Jeśli owned.length > 1:
+  - My Profile → owned.sort(-updated_date)[0].id
+  - Opcjonalnie: toast "Masz zduplikowany profil — scalamy..."
+  - Wywołaj mergeDuplicateUserProfiles dla tego usera
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — GUARDRAIL UI (tylko dev / tymczasowo)
+═══════════════════════════════════════════════════════════════
+
+Gdy is_self=false ALE myProfileId === urlId:
+  → to bug backendu; FIX 1 frontend maskuje to
+  → loguj console.warn z _debug
+
+Gdy is_self=false ALE user.is_coach && ownedIds.length > 0
+  && urlId NOT IN ownedIds:
+  → pokaż banner:
+    "Ten link nie prowadzi do Twojego profilu."
+    [Przejdź do mojego profilu] → /UserProfile?id={_my_profile_id}&tab=coach
+
+To wyjaśni userowi dlaczego widzi Follow (otworzył cudzy/zły link).
+
+═══════════════════════════════════════════════════════════════
+WERYFIKACJA DLA DAMM IAN (MANUAL — MUSI PRZEJŚĆ)
+═══════════════════════════════════════════════════════════════
+
+1. Zaloguj jako damm ian
+2. Otwórz DevTools → Network → getUserProfile
+3. Sprawdź response:
+   - is_self (musi być true)
+   - _debug.owned_profile_ids
+   - _debug.requested_profile_id vs _my_profile_id
+4. Hard refresh Ctrl+Shift+R
+5. Menu → My Profile:
+   ✓ Brak Follow / Message
+   ✓ Edit banner + pencils na Coach tab
+6. Jeśli nadal Follow na My Profile:
+   → duplikat profili: uruchom merge + napraw FIX 2
+
+═══════════════════════════════════════════════════════════════
+TESTY AKCEPTACJI
+═══════════════════════════════════════════════════════════════
+
+T1 — lokistakontakt (regresja): nadal działa jak po Prompt 31
+T2 — damm ian My Profile: is_self true, edit mode, Coach tab pencils
+T3 — damm ian zły ?id= (cudzy profil): Follow visible, banner "To nie Twój profil"
+T4 — duplikat profili: ownedIds.length>1 → My Profile używa canonical, is_self true
+T5 — frontend fallback: symuluj is_self:false + matching myProfileId → edit mode OK
+
+═══════════════════════════════════════════════════════════════
+DEFINICJA DONE
+═══════════════════════════════════════════════════════════════
+
+damm ian na My Profile widzi edit mode (nie Follow).
+getUserProfile zwraca is_self:true LUB frontend fallback p===r działa.
+Duplikaty profili nie psują owner detection.
+
+NIE ZAMYKAJ zadania dopóki damm ian nie potwierdzi na prod.
