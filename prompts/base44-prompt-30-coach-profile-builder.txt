@@ -1,0 +1,282 @@
+PROMPT 30: Coach Profile Builder — inline edit on own /UserProfile + visibility + blocks + badges + drag reorder
+
+================================================================================
+CONTEXT — PRODUCT ARCHITECTURE (do not change)
+================================================================================
+- Single user account. Coach = capability on the same profile, NOT a separate account.
+- No Coach/User/Trainee mode switcher.
+- Use "Trainee", not "Athlete".
+- Public coach profile = storefront / business card + offers.
+- Services = offers (managed at /CoachServices).
+- Coach Hub (/CoachBusinessHub) = operational dashboard (KPI, checklist, referral, shortcuts) — NOT the only place to edit profile.
+- Settings = account, privacy, lifecycle — NOT profile content editing (no bio, specialties, photos, block editor in Settings).
+- Real routes: Coach Hub → /CoachBusinessHub, Services → /CoachServices, Marketing → /CoachMarketing (if still exists). Dead URLs /CoachHub, /Services, /Marketing return 404 — add redirects if needed.
+
+================================================================================
+WHAT ALREADY WORKS (reuse — do NOT rebuild from scratch)
+================================================================================
+Coach Hub → Public Profile tab (/CoachBusinessHub?section=profile) already has:
+- Banner: "Edit mode — click any pencil to update a field. Changes save instantly."
+- Guest View toggle
+- Pencil icons on photo, name, headline, bio, specialties, location, training mode, price, visibility, accepting clients
+- Public profile layout with inline edit affordances
+- "Advanced editor (all fields)" collapsed at bottom (optional fallback)
+
+This inline-edit component/logic EXISTS. Mount the SAME owner experience on /UserProfile when viewer === profile owner.
+
+================================================================================
+CRITICAL BUG — STILL UNFIXED (must fix in this prompt)
+================================================================================
+When a coach opens their OWN public profile at /UserProfile?id=…, the page still renders VISITOR layout:
+- "+ Follow" button
+- "Send message request" button
+- "Share" button (visitor-style)
+- Read-only About / Specialties / Certifications — NO pencil icons
+- NO "Edit mode" banner
+- NO Guest View toggle
+
+The coach must go to Coach Hub to edit. This is WRONG.
+
+ONE RULE:
+  IF logged_in_user === profile_owner on /UserProfile:
+    → OWNER view: inline edit + pencils + Guest View + builder controls
+    → HIDE: Follow, Send message request, visitor Share
+  ELSE:
+    → VISITOR view: Follow, Message, Share — read-only, no edit UI
+
+FAIL if owner sees Follow or Send message request on own profile.
+FAIL if owner must use Coach Hub as the ONLY place to edit bio/photo/specialties.
+
+================================================================================
+PRODUCT VISION — COACH PROFILE BUILDER
+================================================================================
+Coach public profile is a BUILDABLE STOREFRONT (Facebook inline edit + Linktree blocks + Notion drag reorder).
+
+Owner on /UserProfile:
+1. DEFAULT = Live Edit mode — edit directly on the profile layout visitors see
+2. Guest View toggle — see exactly what others see, zero edit UI
+3. Eye toggle per section/block — show/hide on public profile
+4. Drag reorder — change block order (single column MVP)
+5. Add block — pick from library, insert between sections
+6. Badges — system + toggle + custom on hero row
+7. Preview directory card — see how the Coach Directory listing card renders
+
+Trainee / visitor:
+- Read-only profile with ONLY visible blocks in saved order
+- Follow, Message, Share, Book CTA as appropriate
+- No pencils, no Guest View toggle, no builder UI
+
+================================================================================
+PHASE 1 — OWNER PROFILE SURFACE (ship now)
+================================================================================
+
+A. /UserProfile owner view:
+   - Reuse Coach Hub Public Profile inline-edit component when isOwner === true
+   - Top bar: "Edit mode — click any pencil to update a field. Changes save instantly."
+   - Guest View toggle (top-right)
+   - Copy profile link button
+   - Optional shortcut: "Open Coach Hub" (secondary — Hub is NOT required to edit)
+
+B. Hide visitor actions for owner:
+   - NO Follow, NO Send message request on own profile
+   - Replace with owner actions: Guest View, Copy link, Add block
+
+C. Entry points — ALL must land in Edit mode on /UserProfile for owner:
+   - Direct URL /UserProfile?id=own_id
+   - "Open coach profile" from Coach Hub
+   - "View Profile" on own directory card
+   - "Edit public profile" quick action on Hub Overview
+   - Shared profile link opened while logged in as owner
+
+D. Coach Hub Public Profile tab:
+   - Preferred: redirect to own /UserProfile in Edit mode (one canonical surface)
+   - Acceptable: embed identical builder component — must stay in sync with /UserProfile
+   - Hub Overview KPI/checklist/referral unchanged
+
+E. Settings boundary:
+   Settings → Coach Profile sub-nav — ONLY:
+   - Lifecycle: Active / Pause / Deactivate / Delete coach profile
+   - Privacy toggles: "Show my coach profile publicly", "Show in coach directory", "Accepting new clients"
+   - Link: "Edit your public profile" → /UserProfile (Edit mode)
+   REMOVE: bio, specialties, photos, location, price, certifications editing in Settings
+   REMOVE: "Manage public profile in Coach Hub" as primary edit path
+
+================================================================================
+PHASE 2 — PER-SECTION VISIBILITY (eye toggle)
+================================================================================
+Every block/section has an eye icon in Edit mode:
+- Eye ON (default for core sections): renders for visitors
+- Eye OFF: hidden from public profile AND directory card snippet; owner sees greyed block labeled "Hidden from public" in Edit mode
+
+Default visibility:
+  ON:  About, Specialties, Certifications, Price, Experience, Offers, Follower count, Primary CTA
+  OFF: Gallery, Testimonials, FAQ, Posts feed, Social links, Discovery score, Referral code, Working hours, Map/location
+
+Coach can override any default.
+
+Directory card config (Edit mode panel):
+  Coach chooses what appears on Coach Directory listing card:
+  - Photo, name, headline (always)
+  - Up to 2 specialty tags
+  - Price or "From X PLN"
+  - 1 badge (Verified / Accepting / custom)
+  - City or Online chip
+  - Rating stars (if reviews exist)
+  Toggle "Preview directory card" next to Guest View.
+
+================================================================================
+PHASE 3 — BLOCK LIBRARY (add / remove / reorder)
+================================================================================
+"Add block" button — between sections and at bottom. Opens picker with categories.
+
+CORE BLOCKS (cannot delete — only hide via eye toggle):
+1. About — rich text bio (short 160 chars for card + full bio for profile)
+2. Specialties — tag picker; mark one as Primary specialty for directory
+3. Certifications — list: name, org, year, optional upload
+4. Offers / Services — cards linked to /CoachServices offers OR inline offer card
+5. Price + Book CTA — price per session, "Book a Session" / "Request coaching" button
+6. Experience — years + optional "Trainees coached" stat
+
+EXTENDED BLOCKS (can add and remove):
+7. Testimonials — quote + author name + optional stars + avatar initial
+8. Gallery — up to 6 images
+9. Video intro — YouTube/Vimeo URL embed
+10. FAQ — accordion Q&A pairs (add/remove pairs)
+11. Social links — row of icons + URLs (Instagram, TikTok, YouTube, Strava, website)
+12. Stats row — 3 custom stat cells (label + value), e.g. "500+ sessions", "4.9★", "10 yrs"
+13. CTA button — custom label + URL or Book action
+14. Working hours — timezone + Mon–Sun schedule (reuse existing working hours data)
+15. Posts feed — coach updates (Update, Tip, Announcement, Workout share) — sync with Hub posts
+16. Referral / promo — display referral code from Hub (toggle visibility)
+17. Case study — goal → result → timeframe (3 fields)
+18. Programs — program card: title, duration, price, description
+19. Before/after — image pair + caption
+20. Divider — visual separator
+21. Spacer — vertical space
+22. Custom rich text — freeform markdown block
+
+Block data model (conceptual):
+  blocks[]: { id, type, order, visible, config: { ...fields per type } }
+  Persist order + visibility + config on save.
+
+================================================================================
+PHASE 4 — DRAG REORDER (MVP: single column)
+================================================================================
+- Drag handle (⋮⋮) on left of each block in Edit mode
+- Reorder blocks below hero zone
+- Hero zone FIXED at top (not draggable below fold): cover, photo, name, headline, badge row, primary CTA
+- Mobile: same vertical order, touch drag supported
+- Persist order on drop (auto-save or explicit save — prefer auto-save like existing inline edit)
+
+Future-ready (design model now, implement later):
+  layout: { version: 1, preset: "classic" | "sidebar-right" | "card-stack" | "minimal" }
+  Zones: hero (fixed) | main column | sidebar column
+  Do NOT block Phase 1–3 on two-column layout.
+
+================================================================================
+PHASE 5 — BADGE SYSTEM
+================================================================================
+Hero badge row — below name/headline:
+
+SYSTEM BADGES (auto, read-only source):
+- COACH
+- Approved Coach
+- Verified (after verification approved)
+- PRO / ELITE tier (from billing)
+
+TOGGLE BADGES (coach on/off):
+- Accepting new clients
+- Online / In-person / Hybrid (training mode)
+- Waitlist only (optional)
+
+CUSTOM BADGES (coach adds, max 3 visible):
+- Preset picker: "10+ years", "NASM CPT", city name, language pair, "500+ clients", emoji + short text (max 20 chars)
+- Custom color from brand palette (orange/dark/neutral — no free hex to avoid ugly profiles)
+
+AUTO BADGES (optional show/hide via eye toggle):
+- Directory rank "#N of M"
+- Discovery score tier (if shown)
+- Profile 100% complete
+- Responds fast (future)
+
+Badges appear on full profile hero AND respect directory card config (max 1 badge on card).
+
+================================================================================
+PHASE 6 — INLINE EDIT BEHAVIOR (Facebook model)
+================================================================================
+Default for owner = Edit mode ON:
+- Pencil icon on or next to every editable field in every visible block
+- Click pencil OR click field → inline edit in place (popover, inline input, or expand textarea)
+- Save per field (Save/Cancel) OR auto-save on blur — match existing "Changes save instantly" behavior
+- After save, profile updates in place — no redirect to Settings, Coach Hub form, or /CreateCoachProfile for existing coaches
+
+Guest View toggle:
+- ON: hide ALL pencils, drag handles, eye toggles, Add block, Save buttons, upload controls
+- Show exactly what a visitor sees (including Follow/Message if previewing visitor chrome — or clean public layout without visitor actions since owner is previewing)
+- Banner: "Viewing as guest" + "Exit Guest View" button
+- OFF (default for owner): full Edit + builder mode
+
+/CreateCoachProfile:
+- First-time onboarding ONLY
+- After save → redirect to /UserProfile (Edit mode)
+- Existing coach → redirect to /UserProfile (Edit mode), NOT onboarding form
+
+================================================================================
+SYNC WITH EXISTING FEATURES
+================================================================================
+- Offers on profile ↔ offers created at /CoachServices (same data source)
+- Posts block ↔ posts published from Hub/coach profile posts section
+- Referral code ↔ referral from Coach Hub Overview
+- Discovery score / Directory rank ↔ KPI from Coach Hub (optional display blocks)
+- Visibility "public/private" ↔ Settings privacy toggles (Settings controls policy; profile builder controls presentation)
+- Verification upload ↔ existing verification flow in profile editor
+
+================================================================================
+UI TESTS — ACCEPTANCE (all must pass)
+================================================================================
+OWNER /UserProfile:
+1. Owner opens /UserProfile?id=own_id → Edit mode banner + pencils on editable fields. NO Follow. NO Send message request.
+2. Owner clicks pencil on bio → inline edit → save → bio updates in place without navigation.
+3. Guest View ON → zero edit/builder UI; layout matches visitor-visible content.
+4. Guest View OFF → pencils and builder controls return.
+5. Eye toggle OFF on About → Guest View and incognito visitor do NOT see About section.
+6. Eye toggle ON → section visible to visitors.
+7. Drag block order (e.g. Specialties above About) → refresh page → order persisted.
+8. Add block (FAQ) → fill content → eye ON → visitor sees FAQ.
+9. Remove custom block (FAQ) → gone from profile.
+10. Custom badge added → visible on hero; eye OFF on badge → hidden from guest.
+11. "Preview directory card" shows card matching directory listing fields.
+12. "Open coach profile" from Hub → /UserProfile Edit mode, NOT read-only visitor page.
+
+VISITOR /UserProfile:
+13. Non-owner opens same /UserProfile → read-only, Follow/Message visible, NO pencils, NO Guest View toggle, NO drag handles.
+14. Visitor sees ONLY blocks with eye ON, in saved order.
+
+SETTINGS:
+15. Settings → Coach Profile → lifecycle + privacy toggles ONLY. NO bio/specialty/photo fields. Link to /UserProfile edit.
+
+COACH HUB:
+16. Hub Overview KPI, checklist, referral still work.
+17. Hub Public Profile tab redirects to or mirrors /UserProfile Edit mode (no duplicate stale editor).
+
+FAIL CONDITIONS (any = not done):
+- Owner sees Follow on own profile
+- Owner must go to Coach Hub to edit bio
+- Zero pencil icons on owner profile
+- Hidden section still visible to visitors
+- Settings contains profile content editing forms
+
+================================================================================
+IMPLEMENTATION PRIORITY ORDER
+================================================================================
+1. Fix isOwner on /UserProfile (no Follow/Message, mount inline edit component) — CRITICAL
+2. Guest View toggle on /UserProfile
+3. Eye toggle per section (visibility)
+4. Drag reorder single column
+5. Add block library (core 6 + extended 16 blocks)
+6. Badge system (system + toggle + custom)
+7. Directory card preview + config
+8. Redirect Hub Public Profile tab to /UserProfile
+9. Slim Settings Coach Profile to lifecycle + privacy only
+
+Ship 1–3 first if needed incrementally, but aim to deliver full builder in this prompt.
