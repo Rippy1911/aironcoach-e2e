@@ -56,7 +56,7 @@ export default defineConfig({
       // e2e/.auth/coach.json + e2e/.auth/user.json. Skipped at runtime unless
       // TEST_COACH_EMAIL + TEST_USER_EMAIL are set in .env.
       name: 'two-account-invite',
-      testMatch: /(accept-team-invite-happy-path|setup-coach-team)\.spec\.ts/,
+      testMatch: /(accept-team-invite-happy-path|setup-coach-team|p42-coach-hub-by-team)\.spec\.ts/,
       workers: 1,
       use: { ...devices['Desktop Chrome'] },
     },

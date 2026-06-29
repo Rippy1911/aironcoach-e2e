@@ -13,6 +13,9 @@ e2e/.auth/*.json
 # Promo capture output is regenerated per run; commit ad-hoc, not by default.
 promo-assets/
 
+# One-off verification screenshots/reports (contain test-account UI captures)
+verify-out/
+
 *.log
 .DS_Store
 
