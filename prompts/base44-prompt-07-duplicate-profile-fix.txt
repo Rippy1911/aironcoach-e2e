@@ -1,0 +1,255 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## P0 BUG — Zły profil po zapisie coacha / My Profile pokazuje inne dane niż tworzę
+
+### Latest prod verification (2026-06-25 — **FIX DEPLOYED**)
+
+Logged-in Playwright on `lokistakontakt@gmail.com`:
+
+| Check | Result |
+|-------|--------|
+| My Profile | `/UserProfile?id=6a3ca50c65a59273f399090e` — **Loki Stream** (not mkpiwecki) |
+| Create coach profile | Saves OK → redirects to `CoachBusinessHub` |
+| Coach Hub / Services | Unlocked — “Loki Stream Coach”, Services page loads |
+
+Bundle `assets/index-CxFQPeji.js` implements canonical selection via `yse()` + `uu(authUser)` with `UserProfile.filter({ created_by_id: auth.id })` — equivalent to this prompt’s `getCanonicalUserProfile` spec (different export name).
+
+Retest:
+
+```bash
+TEST_PRO_EMAIL=lokistakontakt@gmail.com node scripts/coach-create-probe.mjs
+node scripts/ui-audit-prod.mjs
+```
+
+---
+
+### Earlier prod verification (2026-06-25 morning — before deploy)
+
+Logged-in Playwright on both test accounts:
+
+| Account | My Profile result | Coach create result |
+|---------|-------------------|---------------------|
+| `lokistastream@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = **mkpiwecki** | `403 Permission denied` updating that same UserProfile row |
+| `lokistakontakt@gmail.com` | `/UserProfile?id=698867e38ffb4566bd59e048` = **mkpiwecki** | `403 Permission denied` updating that same UserProfile row |
+
+This means the coach funnel is currently blocked before Hub/Services can be tested. Fix this prompt first, then retest with:
+
+```bash
+node scripts/coach-create-probe.mjs
+node scripts/qa-sweep.mjs
+```
+
+---
+
+### Odtworzenie (zgłoszone przez użytkownika)
+
+- Wiele kont testowych na prod
+- Po utworzeniu/edycji profilu coacha użytkownik widzi **inny profil** niż ten który edytuje
+- My Profile może prowadzić do profilu z danymi innej osoby (np. Marek Nowak) lub starego wiersza testowego
+- Create coach profile zapisuje toast sukcesu, ale UserProfile pokazuje coś innego
+
+### Root cause (potwierdzone analizą bundle prod)
+
+**System pozwala na WIELE rekordów `UserProfile` z tym samym `created_by` (email)** — do 50 wierszy:
+
+```js
+UserProfile.filter({ created_by: email }, "-updated_date", 50)
+```
+
+Następnie funkcja **`uu()`** wybiera „kanoniczny" profil przez **scoring `Fz()`**, który **faworyzuje coacha**:
+
+| Pole | Punkty w Fz() |
+|------|----------------|
+| is_coach + approved | +1,000,000 |
+| coach_onboarding_completed | +200,000 |
+| coach_business_name | +100,000 |
+| coach_status !== none | +50,000 |
+| is_coach | +40,000 |
+| onboarding_completed (personal) | +20,000 |
+| first_name / last_name | +10,000 / +5,000 |
+
+**Efekt:** jeśli na jednym emailu są 2+ wiersze UserProfile (np. z testów E2E, wielokrotnego onboardingu, create zamiast update):
+- `useMyProfile` / menu „My Profile" → zawsze bierze wiersz z **najwyższym score** (prawie zawsze coach)
+- `CreateCoachProfileForm` save → `uu(rows)` → **updateuje ten sam „wygrany" wiersz**, niekoniecznie ten który user myśli że edytuje
+- Osobny wiersz „personal" zostaje osierocony ze starymi danymi (np. Marek Nowak, test data)
+- `/UserProfile?id=<stary_id>` nadal pokazuje stary wiersz — user myśli że to „jego" profil
+
+Dodatkowo istnieje **`bRe()`** które przy wielu coach rows zwraca `status: "ambiguous"` — system **wie** o problemie duplikatów, ale CreateCoachProfile tego nie obsługuje.
+
+**CreateCoachProfile i CreateUserProfile używają tej samej logiki:**
+```js
+const rows = await UserProfile.filter({ created_by: email }, "-updated_date", 50);
+const picked = uu(rows, email);
+if (picked?.id) await UserProfile.update(picked.id, payload);
+else await UserProfile.create(payload);
+```
+
+To jest **fundamentalny bug danych**, nie kwestia UX „coach vs user profile".
+
+---
+
+## FIX A — Jeden kanoniczny UserProfile na użytkownika (P0)
+
+### Reguła
+
+```
+1 user (auth id / email) = max 1 aktywny UserProfile row
+Coach capability = pola na TYM SAMYM wierszu, nie osobny rekord
+```
+
+### Backend / entity
+
+1. Dodaj unikalność logiczną: `created_by` (email) **lub** `created_by_id` (auth user id) — jeden profil na user
+2. Jeśli platforma nie wspiera unique index — backend guard w każdym create:
+   - `ensureSingleUserProfile(user)` przed create
+   - jeśli istnieje → update, nigdy create drugiego wiersza
+
+### Migration / cleanup (jednorazowo)
+
+Skrypt admin `mergeDuplicateUserProfiles`:
+1. Znajdź emaile z `count(UserProfile) > 1`
+2. Dla każdego emaila:
+   - **Primary** = wiersz z `created_by_id === auth.userId` jeśli jest, inaczej najstarszy z `onboarding_completed`
+   - **Merge** z pozostałych: coach fields, billing (premium, credits), name, avatar — do primary
+   - **Archive/delete** duplikaty (soft-delete flag `merged_into_id` jeśli delete ryzykowne)
+3. Raport: email → merged N rows → primary id
+
+**Priorytet merge coach fields:** jeśli duplikat ma `is_coach: true` a primary nie — przenieś coach pola na primary.
+
+---
+
+## FIX B — Zastąp uu() / Fz() scoring dla „my profile" (P0)
+
+### Problem
+
+`uu()` z Fz() scoring **nie nadaje się** do wyboru „mojego profilu" — to wybiera „najbardziej coach-like row".
+
+### Nowa logika `getCanonicalUserProfile(rows, user)`
+
+```js
+export function getCanonicalUserProfile(rows, user) {
+  if (!rows?.length) return null;
+  const userId = user?.id;
+  const email = user?.email;
+
+  // 1. Exact match by created_by_id (najpewniejsze)
+  if (userId) {
+    const byId = rows.filter(r => r.created_by_id === userId && !isServiceRow(r));
+    if (byId.length === 1) return byId[0];
+    if (byId.length > 1) return pickNewest(byId); // + log warning
+  }
+
+  // 2. Match by created_by email
+  const byEmail = rows.filter(r => r.created_by === email && !isServiceRow(r));
+  if (byEmail.length === 1) return byEmail[0];
+  if (byEmail.length > 1) {
+    // NIE używaj Fz() — preferuj wiersz z OBU: onboarding_completed + najnowszy updated_date
+    return pickBestCanonical(byEmail); // see below
+  }
+
+  return null;
+}
+
+function pickBestCanonical(rows) {
+  // Prefer: onboarding_completed true, then max updated_date
+  // NIE faworyzuj coach score — coach to pola na tym samym wierszu
+  return [...rows].sort((a, b) => {
+    const oc = (b.onboarding_completed ? 1 : 0) - (a.onboarding_completed ? 1 : 0);
+    if (oc) return oc;
+    return new Date(b.updated_date) - new Date(a.updated_date);
+  })[0];
+}
+```
+
+### Gdzie podmienić
+
+- `wRe()` (useMyProfile fetch)
+- `CreateCoachProfileForm` save
+- `CreateUserProfileForm` save
+- `ProfileModeMenu` — `o.id` musi być z canonical profile
+- Wszękie `uu(rows, email)` → `getCanonicalUserProfile(rows, user)` z **user object** (id + email)
+
+**Usuń lub ogranicz Fz()** — używaj tylko do rankingu directory, NIE do „which is my profile".
+
+---
+
+## FIX C — Coach save na tym samym wierszu co personal (P0)
+
+`CreateCoachProfileForm` save:
+
+1. `const profile = await ensureCanonicalProfile(user)` — jeden wiersz, create tylko jeśli zero
+2. `update(profile.id, { ...coachFields })` — **nie nadpisuj** first_name/last_name jeśli user nie edytował ich w coach form (albo sync świadomie z osobnej sekcji)
+3. Po save: `invalidateQueries(['myProfile', 'userProfile', profile.id])`
+4. Redirect: `/UserProfile?id=${profile.id}&tab=coach` (nie losowy id)
+
+**Coach fields na tym samym UserProfile co personal** — zgodnie z unified account. Nie twórz drugiego wiersza „coach profile".
+
+---
+
+## FIX D — My Profile zawsze self (P0 UX)
+
+Menu „My Profile" / header click:
+
+```js
+// ZAWSZE canonical self profile
+const { profile } = useMyProfile();
+navigate(`/UserProfile?id=${profile.id}&tab=${defaultTab}`);
+
+// defaultTab:
+// - coach with capability → 'coach' (opcjonalnie, UX)
+// - else → 'overview'
+```
+
+**Nigdy** nie linkuj do `/UserProfile` bez id lub z id z cache innego użytkownika.
+
+Dodaj guard na `/UserProfile`:
+- jeśli `id` w URL !== canonical self id i brak public view → OK (viewing others)
+- jeśli user klika „my profile" a URL ma cudze id → redirect do self id
+
+---
+
+## FIX E — Obsługa ambiguous (gdy duplikaty jeszcze istnieją)
+
+Jeśli po migracji nadal `count > 1`:
+
+- Settings → Account: banner „We found duplicate profile records — Fix now"
+- Przycisk uruchamia `mergeDuplicateUserProfiles` dla tego usera
+- `bRe()` status `ambiguous` → pokaż UI zamiast silent wrong pick
+
+---
+
+## FIX F — Test accounts cleanup (prod hygiene)
+
+- Admin dev tool: lista emaili z `UserProfile count > 1`
+- Możliwość merge per email
+- E2E test accounts (`e2e-*@aironcoach-test.com`, konta testowe) — nie powinny zostawiać duplicate rows na prod; dokumentacja dla Testing Agent: zawsze `update` canonical, nigdy `create` jeśli row exists
+
+---
+
+## Testy obowiązkowe
+
+1. Email z 2 UserProfile rows (stary test + nowy) → po fix **jeden** canonical, My Profile pokazuje właściwe dane
+2. Create coach profile → ten sam `profile.id` przed i po save
+3. `/UserProfile?id=<self>` po save pokazuje coach name/bio które właśnie zapisano
+4. Viewing `/UserProfile?id=<other>` (Marek Nowak) — bez zmian, to cudzy profil
+5. mergeDuplicateUserProfiles na koncie testowym → 1 row, raport merged
+6. Regression: nowy user signup → dokładnie 1 UserProfile row
+
+---
+
+## Czego NIE robić
+
+- Nie twórz osobnego entity „CoachProfile" — coach pola na UserProfile
+- Nie profile mode switcher
+- Nie wybieraj profilu przez Fz() coach scoring
+- Nie twórz drugiego UserProfile.create jeśli row dla user już istnieje
+
+---
+
+## Raport końcowy
+
+1. Ile emaili miało duplicate rows na prod (przed merge)
+2. Przykład: email użytkownika zgłaszającego — ile rows, który został primary, co zmergowano
+3. Pliki zmienione (uu → getCanonicalUserProfile, forms, migration)
+4. Screenshot: My Profile po save coach = te same dane co formularz
+5. Test checklist ✅/❌

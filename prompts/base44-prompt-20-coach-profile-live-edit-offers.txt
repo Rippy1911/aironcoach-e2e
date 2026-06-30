@@ -1,0 +1,66 @@
+Masz kontekst apki — zmień u siebie co trzeba.
+
+Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie Athlete. Bez switchera trybów.
+
+---
+
+## Problem
+
+1. Oferty z Services nie widać na profilu coacha (tab Coach).
+2. Brak wygodnej edycji na własnym profilu — user szuka Settings / wizard.
+3. Po zostaniu coachem brak jasnego flow widoczności; profil personal i coach się rozjeżdżają.
+
+---
+
+## Oczekiwane zachowanie
+
+### Oferty na wizytówce
+- Aktywne publiczne oferty z Services na tab Coach (gość i właściciel).
+- Zarchiwizowane / niepubliczne — nie.
+- Zmiana w Services od razu widać na profilu.
+
+### Własny profil — ołówek + inline edit + Guest View
+
+**Wzorzec (coach i zwykły user u siebie):**
+- Przy każdym edytowalnym polu ikona ołówka (tylko właściciel, tylko poza Guest View).
+- Klik → edycja na miejscu (inline lub lekki sheet), bez pełnej nowej strony dla prostych pól.
+- Tab Coach (coach): zdjęcie, nazwa, headline, bio, specjalizacje, lokalizacja, tryb treningu, widoczność coacha, accepting clients.
+- Tab Overview (user u siebie): bio, zdjęcie, podstawowe dane personal — ten sam wzorzec ołówka.
+
+**Oferty na profilu (właściciel):**
+- Ołówek na karcie oferty → szybka edycja na miejscu: tytuł, cena, krótki opis, widoczność publiczna.
+- Link „Więcej w Services” / „Manage in Services” → pełna edycja (archiwum, tier, szczegóły) — jedno źródło prawdy dla złożonych rzeczy.
+
+**Oferty (gość):**
+- Tylko przycisk **„Request coaching”** (główny CTA) + opcjonalnie **„Message”** obok — bez ołówka.
+
+**Guest View:**
+- Tylko **toggle w headerze** profilu (nie osobny URL).
+- Włączony = dokładnie widok gościa, zero ołówków.
+- Wyłączony = tryb edycji z ołówkami.
+
+### Zostajesz coachem — widoczność i uproszczenie
+
+**W flow tworzenia / aktywacji coacha** (Create coach profile lub pierwszy save):
+- Pytanie: **„Udostępnić profil coacha publicznie?”** (lub po angielsku odpowiednik w UI apki).
+- Checkbox **domyślnie zaznaczony (publiczny)** — user musi świadomie odznaczyć, żeby zostać prywatnym.
+- Krótki helper: publiczny = widać w directory i na wizytówce; prywatny = tylko Ty i link.
+
+**Personal vs coach:**
+- Warstwa personal / Overview **nie jest drugą publiczną tożsamością** — zostaje prywatna / uproszczona dla coacha.
+- Własny profil coacha: **domyślny tab Coach** (wizytówka).
+- Tab **Overview zostaje**, ale **nie jest domyślny** — dla streaku / aktywności treningowej u siebie; gość go nie widzi jeśli personal prywatny.
+
+### Gość / inny user
+- Publiczna wizytówka coacha + oferty + CTA. Zero ołówków, zero Guest View.
+
+---
+
+## Nie psuj
+- Jedno konto, jeden profil użytkownika.
+- Hub / Services / create coach flow.
+
+---
+
+## Test w UI
+Oferta w Services → na Coach tab. Ołówki u siebie; szybka edycja oferty na profilu; Guest View toggle. Nowy coach: pytanie o publiczność, default zaznaczony. Default tab Coach u siebie. Gość: Request coaching na ofercie.

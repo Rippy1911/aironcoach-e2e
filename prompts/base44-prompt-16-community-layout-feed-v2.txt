@@ -1,0 +1,11 @@
+Airon Coach — nie ruszaj Home i Training.
+
+## 16 — Community layout
+
+**Problem:** feed wąski (~połowa ekranu), Quick Actions powielają to co już jest w sidebarze.
+
+**Oczekiwane:**
+- Feed na desktopie sensownie wykorzystuje szerokość (nie wąska kolumna pośrodku pustki)
+- Bez redundantnych skrótów do Find coach / Teams / Trainees na Feedzie
+- Zakładki Community (Feed, Teams, Messages, People) spójny layout
+- People ładuje się bez errora

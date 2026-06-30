@@ -1,0 +1,15 @@
+Airon Coach — coach i personal to ten sam profil użytkownika.
+
+## 17 — Coach formularz + Services
+
+**Problem:**
+- Po zapisie coacha znikają wybrane specjalizacje, formularz każe wybrać od nowa
+- Formularz create coach wąski, bez podglądu
+- W Services nie da się sensownie przejść: utwórz ofertę → archiwizuj → przywróć
+- Settings coach i pełny formularz pokazują różne dane
+
+**Oczekiwane:**
+- Specjalizacje zostają po save i po reload
+- Create coach: czytelny layout na desktopie + podgląd wizytówki
+- Services: pełny cykl oferty (create, archive, restore)
+- Settings coach = te same dane co w wizardzie

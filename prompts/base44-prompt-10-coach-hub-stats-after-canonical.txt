@@ -1,0 +1,168 @@
+Follow the unified account architecture:
+- One account.
+- Coach is a capability on `UserProfile`.
+- No coach/user mode switcher.
+- No separate coach account.
+
+# P0 — Coach Hub after canonical profile fix
+
+## Prerequisite
+
+Do not start this task until the canonical profile hotfix passes:
+
+```txt
+My Profile != mkpiwecki
+CreateCoachProfile save != 403
+Coach fields save on the logged-in user's canonical UserProfile row
+```
+
+If the app still tries to update `UserProfile/698867e38ffb4566bd59e048` for `lokistakontakt` or `lokistastream`, stop and fix prompt 09 first.
+
+---
+
+## Problem
+
+After coach profile creation, `/CoachBusinessHub` has historically shown:
+
+```txt
+Create a coach profile first
+```
+
+or:
+
+```txt
+You're not a coach yet
+```
+
+even when coach fields exist.
+
+Known root risks:
+
+1. `getCoachStats` function can be missing/dead-deployed.
+2. Frontend maps API failure to a “not a coach” empty state.
+3. Coach profile save redirects before `myProfile` and `coachStats` cache are fresh.
+
+---
+
+## Required behavior
+
+### Gate model
+
+Use explicit states:
+
+| State | Condition | UI |
+|-------|-----------|----|
+| No coach profile | canonical profile has no coach identity/capability | Create coach profile CTA |
+| Coach profile saved, stats loading | coach profile exists + stats request pending | Loading dashboard |
+| Coach profile saved, stats OK | stats API returns data | Dashboard |
+| Coach profile saved, stats API error | API 404/500/network | Error state + Retry |
+| Inactive/deactivated coach | `coach_status=inactive` or equivalent | Reactivate / settings CTA |
+
+Never show “not a coach” for API failure.
+
+---
+
+## Backend/function fix
+
+Find and fix the `getCoachStats` function.
+
+Requirements:
+
+- Authenticated coach request returns 200.
+- No local import that breaks Base44 deployment.
+- If helper code is needed, inline the helper or use supported deployment pattern.
+- Return minimal safe stats if full dashboard data is unavailable:
+
+```js
+{
+  profile_id,
+  coach_status,
+  is_coach,
+  completeness,
+  followers_count,
+  services_count,
+  pending_requests_count,
+  profile_views_30d
+}
+```
+
+If a metric cannot be computed, return `0` or `null`; do not fail the whole endpoint.
+
+---
+
+## Frontend fix
+
+### CoachBusinessHub
+
+Replace any logic like:
+
+```js
+if (error || !data || data.error) showNotCoach();
+```
+
+with:
+
+```js
+if (!hasCoachCapability(profile)) showCreateCoachProfileCTA();
+else if (loading) showLoadingDashboard();
+else if (error) showCoachDashboardErrorWithRetry();
+else showDashboard(data);
+```
+
+### CreateCoachProfile redirect
+
+After successful save:
+
+1. Invalidate/refetch canonical `myProfile`.
+2. Invalidate/refetch `coachStats`.
+3. Only then navigate to `/CoachBusinessHub`.
+
+Do not rely on stale profile cache.
+
+### Sidebar active state
+
+When route is `/CoachBusinessHub`, only Coach Hub should be active. Home must not also be active.
+
+---
+
+## Required retest
+
+Use an account that now passes prompt 09.
+
+1. Login.
+2. Create coach profile.
+3. Save.
+4. Confirm network:
+
+```txt
+getCoachStats -> 200
+```
+
+5. Confirm `/CoachBusinessHub` renders dashboard, not gate.
+6. Refresh `/CoachBusinessHub`.
+7. Confirm dashboard still renders.
+8. Temporarily simulate stats failure if possible; UI must show error + Retry, not “not a coach”.
+
+---
+
+## Stop conditions
+
+Stop and report if:
+
+- Coach profile save still fails.
+- Canonical profile is still wrong.
+- You cannot deploy `getCoachStats`.
+- Dashboard is made to “work” by hiding stats errors behind “not a coach”.
+
+---
+
+## Final report required
+
+Return:
+
+1. `getCoachStats` root cause and changed files.
+2. Network proof: status 200 for logged-in coach.
+3. Screenshot: Coach Hub dashboard after create.
+4. Screenshot/error state for API failure if tested.
+5. Cache invalidation/redirect behavior.
+6. Remaining risks.

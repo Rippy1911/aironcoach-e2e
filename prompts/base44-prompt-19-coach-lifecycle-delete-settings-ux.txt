@@ -1,0 +1,11 @@
+Airon Coach — wyłączenie coacha ≠ usunięcie konta.
+
+## 19 — Lifecycle coacha
+
+**Problem:** brak bezpiecznego „usuń dane publiczne coacha”; ustawienia coacha rozrzucone.
+
+**Oczekiwane:**
+- Pause / deactivate / reactivate działają jak opisane w produkcie
+- Nowe: usuń dane publiczne coacha — z potwierdzeniem (np. wpisanie DELETE); konto osobiste zostaje
+- Jeden panel Coach w Settings: widoczność, lifecycle, linki do edycji / hub / services
+- Po deactivate z zachowanymi danymi Hub pokazuje reaktywację, nie „stwórz profil od zera”

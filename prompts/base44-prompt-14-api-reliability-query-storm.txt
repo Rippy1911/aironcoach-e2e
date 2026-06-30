@@ -1,0 +1,11 @@
+Airon Coach — jedno konto, coach to capability (nie osobny tryb). Trainee, nie Athlete.
+
+## 14 — API / stabilność
+
+**Problem:** przy normalnym klikaniu po apce lecą 429, Home czasem error na workoutach, w konsoli 404 na tier classification.
+
+**Oczekiwane:**
+- Profil użytkownika ładuje się raz, bez lawiny tych samych requestów
+- Home działa bez 500 gdy brak workoutów
+- Brak widocznych błędów API przy zwykłej nawigacji
+- Coach Hub / zapis profilu coacha nadal działają

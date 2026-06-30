@@ -1,0 +1,11 @@
+Airon Coach — publiczny profil coacha to wizytówka biznesowa.
+
+## 18 — Publiczny profil coacha
+
+**Problem:** z Coach Directory i z linku `/UserProfile?id=…` ląduję na Overview zamiast wizytówki coacha. Tab Coach wąski.
+
+**Oczekiwane:**
+- Profil publicznego coacha domyślnie otwiera zakładkę Coach (wizytówka)
+- Link „kopiuj profil” prowadzi od razu na wizytówkę
+- Wizytówka: nazwa, bio, specjalizacje, oferty, CTA (follow/message); u siebie też edit/manage
+- Zwykły profil bez coacha — bez zmian, default Overview

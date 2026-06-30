@@ -1,0 +1,199 @@
+Follow Airon Coach architecture:
+- Unified account.
+- Coach is a capability.
+- No profile mode switcher.
+- Do not rename Trainee/Profile concepts.
+- Do not redesign the whole sidebar.
+
+# Profile menu polish — Online flyout + chevrons + canonical links
+
+## Prerequisites
+
+Prompt 09 must already be fixed:
+
+```txt
+My Profile opens canonical self profile
+CreateCoachProfile no longer updates mkpiwecki
+```
+
+If My Profile still opens `mkpiwecki`, stop and fix canonical profile first.
+
+---
+
+## Current verified issues
+
+Logged-in Playwright:
+
+```txt
+Hover Online -> no Away/Busy/Offline panel visible
+```
+
+UI observations:
+
+- Online row appears to be a flyout/submenu trigger, but the flyout is clipped or not rendered.
+- My Profile / View my profile are direct navigation rows, but may show a chevron that implies submenu.
+- Coach Hub, when visible, is also direct navigation and should not show a submenu chevron.
+
+---
+
+## Rule
+
+Chevron/right arrow appears only on rows that open a real submenu/flyout.
+
+| Row | Chevron? | Behavior |
+|-----|----------|----------|
+| Online | Yes | Hover/click opens status flyout |
+| My Profile | No | Navigate to canonical profile |
+| View my profile | No or subtle external/nav icon only | Navigate to canonical profile |
+| Coach Hub | No | Navigate to `/CoachBusinessHub` |
+| Follows & followers | No | Navigate to profile follows tab |
+| Account settings | No | Navigate to Settings |
+| Manage plan | No | Navigate to Billing/Plan |
+| Help & Support | No | Navigate/open help |
+
+---
+
+## Fix A — Online flyout must be visible
+
+Current likely cause:
+
+- parent popover/container has `overflow: hidden`
+- flyout is positioned inside clipped container
+- z-index/stacking context below sidebar or app overlay
+
+Implement one safe solution:
+
+### Option 1 — Portal
+
+Render status flyout in `document.body` / portal and position it relative to Online row bounds.
+
+### Option 2 — Fixed positioning
+
+On hover/focus/click:
+
+```js
+const rect = onlineRow.getBoundingClientRect();
+flyout.style.position = 'fixed';
+flyout.style.left = `${rect.right + 8}px`;
+flyout.style.top = `${rect.top}px`;
+```
+
+### Option 3 — overflow visible
+
+Only if safe:
+
+```css
+profilePopover { overflow: visible; }
+```
+
+Requirements:
+
+- Flyout visible on desktop.
+- Does not get clipped by sidebar.
+- Has z-index above menu.
+- Accessible by keyboard focus/click, not hover-only if possible.
+- Closes on Escape/outside click.
+
+Flyout content:
+
+```txt
+Online
+Away
+Busy
+Offline
+```
+
+or equivalent current app labels.
+
+---
+
+## Fix B — Direct rows must not show submenu chevrons
+
+Remove chevron from:
+
+- My Profile
+- View my profile
+- Coach Hub
+- Follows & followers
+- Account settings
+- Manage plan
+- Help & Support
+
+If the shared `MenuRow` component auto-adds chevrons, change it to:
+
+```js
+showChevron={hasSubmenu || hasFlyout}
+```
+
+not:
+
+```js
+showChevron={!!onClick || !!href}
+```
+
+---
+
+## Fix C — Canonical navigation links
+
+Use canonical self profile from prompt 09:
+
+```js
+navigate(`/UserProfile?id=${canonicalProfile.id}&tab=${defaultTab}`);
+```
+
+Default tab:
+
+- coach capability → `coach`
+- regular user → `overview`
+
+Follows:
+
+```js
+navigate(`/UserProfile?id=${canonicalProfile.id}&tab=follows`);
+```
+
+Do not link to orphan `/MyFollows` unless it redirects.
+
+---
+
+## Required retest
+
+Use logged-in account:
+
+1. Open profile menu.
+2. Hover/focus Online.
+3. Screenshot shows status flyout.
+4. Click Away/Busy/Offline if implemented; status updates.
+5. My Profile has no chevron and opens self profile.
+6. Coach Hub has no chevron and opens `/CoachBusinessHub`.
+7. Follows opens profile follows tab or redirects there.
+
+Automated:
+
+```bash
+TEST_PRO_EMAIL=... node scripts/qa-sweep.mjs
+```
+
+---
+
+## Stop conditions
+
+Stop if:
+
+- Canonical profile is still wrong.
+- You need to add a mode switcher.
+- Flyout is only “fixed” by hiding Online status.
+- Chevron is removed from Online while Online still has flyout.
+
+---
+
+## Final report required
+
+Return:
+
+1. Root cause of clipped flyout.
+2. Files changed.
+3. Screenshot: menu open.
+4. Screenshot: Online flyout visible.
+5. List of rows with/without chevron.
+6. Navigation result for My Profile and Follows.

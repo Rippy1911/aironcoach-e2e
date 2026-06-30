@@ -1,0 +1,173 @@
+Masz kontekst apki — zmień u siebie co trzeba.
+
+Airon Coach: jedno konto, coach = capability. Trainee nie Athlete. Bez switchera trybów.
+
+**Cel:** Coach ma **jedno miejsce w nawigacji** do ogarniania biznesu — **Coach Hub**. Marketing jako osobna pozycja w sidebarze **znika**. Cała edycja wizytówki, widoczność, checklista i podgląd publicznego profilu żyją **wewnątrz Hub** (zakładki / sekcje), nie jako osobna apka w menu.
+
+---
+
+## Problem (prod)
+
+- Sidebar: **Marketing** + **Coach Hub** + **Services** — coach nie wie gdzie zacząć.
+- Na Hub duplikaty: „Marketing Hub”, „Edit coach profile” → Settings, „Services & Offers” — chaos.
+- CoachMarketing (`/CoachMarketing`) to dobry edytor, ale **odłączony** od Hub mentalnie.
+- User: „Chcę ogarnąć coaching” → powinien iść w **jedno** miejsce.
+
+---
+
+## Wizja: Coach Hub = centrum dowodzenia coacha
+
+### Nawigacja (sidebar) — coach z capability
+
+**Zostaje dla coacha:**
+- Home, Training, AI Coach, Community, Trainees… (jak teraz)
+- **Coach Hub** ← jedyne miejsce „mój biznes coachingowy”
+- **Services** (opcjonalnie: można wchłonąć jako tab w Hub — patrz niżej)
+- Settings, Upgrade…
+
+**Usuń z sidebar:**
+- **Marketing** (całkowicie)
+- Duplikaty „Marketing Hub” wewnątrz stron jeśli prowadzą poza Hub
+
+**Stare URL** `/CoachMarketing` → **przekieruj** do Hub z otwartą zakładką edycji profilu (żeby linki nie padły).
+
+---
+
+## Struktura Coach Hub — zakładki (propozycja)
+
+Jeden route `/CoachBusinessHub` z tabami u góry (desktop) lub segmented control (mobile):
+
+| Tab | Rola | Co zawiera (pomysły) |
+|-----|------|----------------------|
+| **Overview** (default) | Kokpit | KPI, completeness %, status widoczności, ostatnie requesty, szybkie akcje |
+| **Profile** | Wizytówka | Cała treść dawnego CoachMarketing — zdjęcie, bio, specjalizacje, lokalizacja, widoczność, checklista |
+| **Offers** | Oferty | Skrót/lista ofert + link do pełnego Services LUB wbudowany CRUD ofert |
+| **Clients** (opcjonalnie) | Klienci | Requests, aktywni klienci — jeśli dane już są w Services, embed lub tab |
+
+**Alternatywa prostsza (3 taby):** Overview | Edit Profile | Offers
+
+Coach **nigdy** nie musi szukać „Marketing” w menu — wchodzi w Hub i wie że Profile = edycja wizytówki.
+
+---
+
+## Tab Overview — kokpit (pomysły UX)
+
+**Górny status bar (zawsze widoczny):**
+```txt
+[Loki Stream Coach]  [● Private / Public / Paused]  [Completeness 71%]
+[Preview as guest]  [Copy profile link]
+```
+
+**Karty KPI (klikalne):**
+- Followers / Discovery score / Directory rank
+- Active offers (N) → tab Offers
+- Pending requests (N) → Services lub tab Clients
+- Profile completeness → tab Profile z scroll do brakującego pola
+
+**Checklista „Co dokończyć”** (jak Marketing checklist, ale na Overview):
+- Każdy punkt **klikalny** → tab Profile, focus na sekcji (zdjęcie, cert, miasto…)
+- Nie duplikuj checklisty w dwóch miejscach — **tylko Overview + deep link do Profile**
+
+**Embedded live preview (desktop):**
+- Prawa kolumna: miniatura publicznej wizytówki (jak Guest view)
+- Aktualizuje się po zapisie w tab Profile bez przeładowania całej apki
+
+**Szybkie akcje (przyciski, nie menu):**
+- Edit profile → tab Profile
+- Add offer → tab Offers lub Services
+- View public profile → UserProfile Guest view
+- Manage plan / referral → jeśli już istnieje, sekcja na dole Overview
+
+---
+
+## Tab Profile — wchłonięcie Marketing
+
+Przenieś **całą funkcjonalność** CoachMarketing do tab Profile w Hub:
+
+1. Podgląd na żywo (sticky na desktop)
+2. Zdjęcie i tożsamość
+3. Bio, specjalizacje, języki
+4. Lokalizacja, online/hybrid
+5. Widoczność (public/private/listed) + accepting clients
+6. Przy **pierwszym** ustawieniu coacha: pytanie „Udostępnić profil publicznie?” — **default zaznaczony TAK**
+
+Zapis w Profile → toast + odśwież preview + odśwież completeness na Overview.
+
+**Nie** zostawiaj równoległego pełnego formularza w Settings (tylko lifecycle: pause / deactivate / delete + link „Zarządzaj w Coach Hub”).
+
+---
+
+## Tab Offers
+
+- Lista aktywnych ofert (te same co Services)
+- CTA: Create offer, Archive, Edit
+- Jeśli Services zostaje osobnym route: tab Offers = **skrót** z przyciskiem „Open full Services” — ale preferuj **pełną obsługę ofert w tab** żeby coach nie musiał wychodzić z Hub
+- Oferty **muszą** być widoczne na publicznym tab Coach profilu użytkownika
+
+---
+
+## Profil użytkownika (UserProfile) — relacja do Hub
+
+- **Mój profil** = podgląd + ołówki (szybkie poprawki) + baner „Pełna edycja w Coach Hub →”
+- Domyślnie **Edit mode** na własnym profilu (nie Guest view)
+- Guest view = toggle
+- Hub Overview → „Open my profile” / „Preview as guest”
+
+Hub nie zastępuje publicznego profilu — Hub **zarządza**, profil **pokazuje**.
+
+---
+
+## Services — dwie opcje (wybierz lepszą dla spójności)
+
+**Opcja A (minimalna):** Services zostaje w sidebar, ale Hub Overview/Offers linkuje tam — sidebar coach ma: Hub + Services.
+
+**Opcja B (bardziej spójna):** Services wchłonięte jako tab Offers + Clients w Hub — **sidebar coach ma tylko Coach Hub** (jedna pozycja biznesowa). Preferuj **B** jeśli nie psuje istniejących flow trainee/klienta.
+
+---
+
+## CreateCoachProfile — tylko onboarding
+
+- Pierwszy raz bez coach capability → krótki wizard (3 kroki max) → **ląduj na Coach Hub tab Profile**, nie na osobnej Marketing.
+- Istniejący coach → `/CreateCoachProfile` redirect → Hub?tab=profile
+
+---
+
+## Mobile
+
+- Hub taby = scrollable pills u góry
+- Overview: karty w stos, preview profilu pod checklistą
+- Profile: jedna kolumna, sekcje accordion
+- FAB na Overview: „+ Offer” lub „Edit profile”
+
+---
+
+## Mikrocopy
+
+- Sidebar: **„Coach Hub”** (nie „Your Coach Business” + osobno Marketing)
+- Tab Profile: **„Public profile”** lub **„Your coach card”** — jasne że to wizytówka
+- Usuń słowo „Marketing” z UI coacha jeśli myli (to nie ads — to **profil publiczny**). Jeśli zostawiasz wewnętrznie, user widzi „Profile” / „Edit profile”.
+
+---
+
+## Czego NIE robić
+
+- Nie zostawiaj Marketing w sidebar obok Hub.
+- Nie miej dwóch checklist completeness (Hub + stary Marketing).
+- Nie kieruj „Edit coach profile” do Settings.
+- Nie zostawiaj Guest view jako default na własnym profilu.
+- Nie psuj jednego konta / jednego UserProfile.
+
+---
+
+## Test akceptacji
+
+1. Coach w sidebarze **nie widzi** Marketing — tylko Coach Hub (+ ewentualnie Services jeśli opcja A).
+2. `/CoachMarketing` → redirect Hub tab Profile.
+3. Hub Overview: KPI + checklista + preview + szybkie akcje.
+4. Hub tab Profile: pełna edycja wizytówki (dawny Marketing).
+5. Edycja w Hub Profile → widać na UserProfile tab Coach + oferty.
+6. Edit coach profile / Marketing Hub na Hub → **tab Profile**, nie Settings, nie osobna strona.
+7. Pierwszy coach → wizard → Hub Profile.
+8. Własny UserProfile: Edit mode domyślnie, baner link do Hub.
+
+Krótki raport co zrobione + jak przetestować w UI.

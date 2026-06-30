@@ -1,0 +1,193 @@
+Masz kontekst apki — zmień u siebie co trzeba.
+
+Airon Coach: jedno konto, coach = capability na tym samym profilu. Trainee nie Athlete. Bez switchera trybów.
+
+**Cel tego taska:** aplikacja ma być **wygodna i intuicyjna**. Coach ma w 10 sekund wiedzieć: gdzie **podgląda** wizytówkę, gdzie **edytuje**, gdzie **sprzedaje** (oferty), gdzie **patrzy na biznes** (statystyki). Zero labiryntu Settings / CreateCoach / Hub / Marketing na to samo.
+
+---
+
+## Co jest źle na prod (zweryfikowane)
+
+1. **Własny profil startuje w Guest view** — user myśli że nic nie może zmienić. Toggle na Edit mode istnieje, ale to za mało oczywiste.
+2. **Brak ołówków / inline edit** przy polach (prompt 20 niedokończony) — tylko ogólne „Edit profile”.
+3. **Coach Hub → „Edit coach profile”** prowadzi do Settings, a najlepszy edytor jest w **CoachMarketing**.
+4. **Za dużo entry pointów** do edycji coacha: Settings, CreateCoachProfile, Marketing, Hub — user się gubi.
+5. **Oferty z Services** często niewidoczne na tab Coach profilu.
+6. Sidebar „Marketing” musi prowadzić do **CoachMarketing** (nie `/Marketing` → 404).
+
+---
+
+## Wizja produktu — jeden prosty model w głowie
+
+Coach powinien rozumieć **4 miejsca**, każde z jedną rolą:
+
+| Miejsce | Rola jednym zdaniem |
+|---------|---------------------|
+| **Mój profil** (tab Coach) | Jak wyglądam na zewnątrz — podgląd + szybkie poprawki |
+| **Marketing** | Pełne studio wizytówki — wszystko co widać publicznie |
+| **Coach Hub** | Panel biznesowy — statystyki, plan, skróty (nie pełny edytor) |
+| **Services** | Oferty i klienci — co sprzedaję |
+
+**Zasada:** edycja „treści wizytówki” = **Marketing**. Profil = podgląd + drobne poprawki. Hub = liczby i skróty, nie formularz na pół ekranu.
+
+---
+
+## A. Własny profil — Edit mode domyślnie + ołówki
+
+### Domyślny tryb
+- Wejście na **własny** profil → od razu **Edit mode** (ołówki widoczne).
+- **Guest view** = toggle w headerze: „Zobacz jak gość” — świadomy podgląd, nie start.
+- W Guest view: zero ołówków, dokładnie to co widzi klient.
+- Powrót: jeden klik „Edit mode” / „Tryb edycji”.
+
+### Ołówek przy polu (wzorzec globalny)
+Przy każdym polu które user może zmienić — **ikona ołówka** po hover (desktop) lub zawsze widoczna (mobile):
+
+| Pole na profilu coacha | Szybka edycja na profilu | Jeśli złożone → |
+|------------------------|--------------------------|-----------------|
+| Zdjęcie / logo | upload / crop mini | Marketing → sekcja zdjęcia |
+| Nazwa publiczna coacha | inline tekst | Marketing |
+| Headline / tagline | inline | Marketing |
+| Bio | krótki inline lub sheet | Marketing → Business Info |
+| Specjalizacje | chip picker | Marketing |
+| Lokalizacja, tryb (online/hybrid) | dropdown inline | Marketing |
+| Widoczność / listed / private | toggle + krótki opis | Marketing |
+| Accepting clients | toggle | Marketing lub Settings lifecycle |
+
+**Zapis:** toast „Zapisano” — bez gubienia chipów po save (znany bug specjalizacji).
+
+### Baner „pełna edycja”
+Na tab Coach u siebie, pod headerem (tylko poza Guest view):
+
+```txt
+Chcesz zmienić więcej? Otwórz Marketing →
+```
+
+Jeden oczywisty escape hatch do pełnego studia.
+
+### Zwykły user (bez coacha) u siebie
+Ten sam wzorzec: Edit mode domyślnie, ołówki przy bio/zdjęciu, Guest view toggle. Spójność całej apki.
+
+---
+
+## B. Coach Hub — dashboard, nie drugi edytor
+
+Hub ma być **przeglądówką**, nie formularzem.
+
+### Co zostaje na Hub
+- Nazwa coacha, status (Approved / Private), completeness %
+- KPI: followers, discovery score, directory rank, tier
+- Skróty: Services, Marketing, podgląd profilu
+- Referral / plan jeśli już jest
+
+### Przekierowania — obowiązkowe
+
+| Przycisk / link na Hub | Dokąd |
+|------------------------|--------|
+| Edit coach profile | **CoachMarketing** |
+| Edytuj profil / uzupełnij wizytówkę | **CoachMarketing** |
+| Open coach profile | UserProfile, tab Coach, **Edit mode** |
+| Preview / Zobacz jako gość | UserProfile, **Guest view ON** |
+| Services & Offers | CoachServices |
+| Marketing Hub (jeśli jest) | CoachMarketing |
+
+**Nigdy:** Edit coach profile → Settings (chyba że Settings ma tylko lifecycle: pause/deactivate/delete).
+
+### Uproszczenie Hub UI
+- Usuń zduplikowane pola formularza które są już w Marketing (business name, bio itd.) — na Hub max **skrót + „Edytuj w Marketing”**.
+- Checklist completeness na Hub: każdy punkt **klikalny** → Marketing z scroll do sekcji (np. „Dodaj zdjęcie” → Marketing focus na photo).
+
+---
+
+## C. Marketing = główne studio coacha
+
+CoachMarketing to **single source of truth** dla publicznej wizytówki.
+
+### Sekcje (logicznie, kolejność intuicyjna)
+1. **Podgląd na żywo** — miniatura profilu publicznego + link „Otwórz profil” (Guest view)
+2. **Zdjęcie i tożsamość** — logo, imię publiczne, headline
+3. **O mnie** — bio, specjalizacje, języki, doświadczenie
+4. **Lokalizacja i forma** — miasto, online / stacjonarnie / hybrid
+5. **Widoczność** — publiczny / prywatny / listed; checkbox przy pierwszym setupie **domyślnie publiczny** z pytaniem
+6. **Checklista kompletności** — jak teraz, ale każdy item → akcja w tej samej stronie
+7. **Oferty (skrót)** — lista aktywnych ofert + „Zarządzaj w Services” — nie duplikuj pełnego CRUD jeśli Services już to robi
+
+### Po zapisie w Marketing
+- Toast: „Profil zaktualizowany — widać na wizytówce”
+- Opcjonalnie: „Zobacz profil” → UserProfile Guest view
+
+### CreateCoachProfile
+- **Tylko pierwszy raz** (brak capability coach) — onboarding wizard.
+- Po aktywacji coacha: wszystkie „Edit coach” w apce → **Marketing**, nie CreateCoachProfile.
+- CreateCoachProfile dla istniejącego coacha → redirect do Marketing (z komunikatem).
+
+---
+
+## D. Settings → Coach Profile — odchudzenie
+
+Settings coach **nie** powinien być drugim Marketingiem.
+
+Zostaw w Settings coach:
+- Lifecycle: pause, deactivate, reactivate, delete public coach data
+- Billing / plan jeśli dotyczy
+- Link prominentny: **„Edytuj wizytówkę w Marketing”**
+
+Usuń / przenieś do Marketing:
+- Duplikat pól bio, nazwy, specjalizacji, visibility (jeśli są w obu miejscach)
+
+---
+
+## E. Oferty na profilu (tab Coach)
+
+- Wszystkie **aktywne publiczne** oferty z Services → karty na tab Coach.
+- Gość: **Request coaching** (główny CTA) + **Message** (drugorzędny).
+- Właściciel: ołówek na karcie → szybka edycja tytuł/cena/opis; „Więcej w Services” → pełna edycja.
+- Zmiana w Services → od razu widać na profilu (bez odświeżania całej apki).
+
+---
+
+## F. Mikrocopy i stany (żeby było intuicyjne)
+
+| Stan | Co user widzi |
+|------|----------------|
+| Profil prywatny | „Profil prywatny — klienci Cię nie widzą w directory” + CTA „Upublicznij w Marketing” |
+| Brak zdjęcia | Placeholder + ołówek + na Hub checklist „Dodaj zdjęcie” |
+| 0 ofert | Na profilu: „Dodaj pierwszą ofertę” → Services |
+| Guest view ON | Subtelny pasek: „Podgląd gościa — wróć do edycji” |
+| Edit mode | Subtelny pasek: „Edytujesz swój profil” |
+
+Język: **Trainee**, nie Athlete. **Coach profile**, nie osobne konto.
+
+---
+
+## G. Mobile
+
+- Ołówki zawsze widoczne (nie tylko hover).
+- Guest view toggle w headerze — duży enough touch target.
+- Marketing: jedna kolumna, sekcje zwijane; podgląd profilu na górze.
+- Hub: karty KPI w stos, nie tabela na 3 kolumny.
+
+---
+
+## H. Czego NIE robić
+
+- Nie dodawać kolejnego miejsca na edycję coacha (5. ekran formularza).
+- Nie zostawiać Guest view jako default na własnym profilu.
+- Nie rozdzielać „prawdziwej” edycji między Settings i Marketing.
+- Nie pokazywać gościowi Overview/Activity jeśli personal jest prywatny.
+- Nie psuć jednego konta / jednego profilu użytkownika.
+
+---
+
+## Test akceptacji (UI)
+
+1. Własny profil → **Edit mode** + ołówki bez klikania toggle.
+2. Guest view toggle → podgląd bez ołówków → powrót do edycji.
+3. Hub → Edit coach profile → **CoachMarketing**.
+4. Zmiana bio w Marketing → widać na profilu (tab Coach).
+5. Oferta w Services → karta na profilu + Request coaching dla gościa.
+6. Istniejący coach → CreateCoachProfile redirectuje do Marketing.
+7. Sidebar Marketing → CoachMarketing, bez 404.
+8. Settings coach → lifecycle + link do Marketing, bez duplikatu pełnego formularza.
+
+Na koniec: krótko co naprawione i jak przetestować — bez listy plików.

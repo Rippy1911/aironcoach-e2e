@@ -1,0 +1,23 @@
+Masz już pełny kontekst tej aplikacji — nie szukaj plików po naszych podpowiedziach, zmień to co trzeba u siebie.
+
+Airon Coach: jedno konto, coach = capability, Trainee nie Athlete, bez switchera trybów. Faza 1 (profil, hub, podstawy lifecycle) już działa — nie psuj.
+
+---
+
+**14 — API:** 429 przy nawigacji, błędy na Home, śmieci w konsoli. Profil ładuje się stabilnie, Home OK bez workoutów.
+
+**15 — Routing:** `/Settings?tab=coach`, follows z menu, Messages/Teams bez fałszywego logout.
+
+**16 — Community:** szerszy feed, bez Quick Actions duplikujących sidebar, People bez errora.
+
+**17 — Coach:** specjalizacje nie znikają po save; create coach z podglądem; Services create/archive/restore; Settings = te same dane.
+
+**18 — Wizytówka:** publiczny coach domyślnie tab Coach; copy link na wizytówkę; sensowna szerokość karty.
+
+**19 — Lifecycle:** delete public coach data (konto zostaje); jeden panel Coach w Settings; reactivate gdy dane zachowane.
+
+**20 — Profil coacha:** oferty na Coach tab; ołówek + inline (oferta: szybka edycja + link do Services); Guest View = tylko toggle; przy aktywacji coacha pytanie o publiczność **default ON**; personal prywatny, default tab Coach, Overview zostaje ale nie domyślny; gość: CTA Request coaching + Message.
+
+**23 — Coach Hub OS:** jeśli robisz większy UX pass, potraktuj Coach Hub jako centrum operacyjne coacha. Usuń Marketing z sidebaru. Wchłoń edycję publicznej wizytówki do Hub → Profile. Hub ma Overview / Profile / Offers / opcjonalnie Clients; Overview pokazuje status, completeness, next best action i public preview. Własny profil startuje w Edit mode, Guest View tylko toggle. Settings nie dubluje edytora profilu.
+
+Na koniec: krótko co naprawione + jak przetestować w UI (bez listy plików).

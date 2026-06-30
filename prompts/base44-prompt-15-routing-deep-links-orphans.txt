@@ -1,0 +1,13 @@
+Airon Coach — jedno konto, Trainee nie Athlete.
+
+## 15 — Linki i trasy
+
+**Problem:**
+- Wejście na `/Settings?tab=coach` nie pokazuje panelu coacha
+- `/MyFollows` pusty / loading zamiast follows
+- `/Messages` i `/Teams` czasem wyrzucają na login mimo że user jest zalogowany
+
+**Oczekiwane:**
+- Deep linki do zakładek Settings działają po wklejeniu URL
+- Follows w menu prowadzą do follows na własnym profilu
+- Messages i Teams otwierają się jak reszta apki dla zalogowanego usera

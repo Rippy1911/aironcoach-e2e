@@ -1,0 +1,280 @@
+Follow Airon Coach product rules:
+- One unified account.
+- Coach is a capability on the same `UserProfile`.
+- Do not add profile mode switchers.
+- Do not create a separate coach account/entity unless it already exists for service tiers.
+- Do not redesign Home or Training in this task.
+
+# Coach profile card + Services Archive/Delete + focused layout audit
+
+## Prerequisites
+
+Only start after:
+
+1. Prompt 09 canonical profile passes.
+2. Prompt 10 Coach Hub/getCoachStats passes or at least no longer blocks profile save.
+
+If coach profile save still returns 403 or My Profile still opens `mkpiwecki`, stop and fix canonical profile first.
+
+---
+
+## Current prod issues
+
+Verified in bundle and Playwright:
+
+```txt
+coachTabLast=true
+archiveOfferLabel=false
+communityFeedMaxW=true
+```
+
+Public coach profile example:
+
+```txt
+/UserProfile?id=6a36135c11b8df0fd5a53e51
+Tabs: Overview | Activity | Coach
+Default: Overview
+```
+
+This is wrong for a coach. The coach profile should behave like a public business card / landing card.
+
+---
+
+## Part A — Coach tab is first and default
+
+### Public coach profile
+
+If profile has public coach capability (`is_public_coach`, `is_coach`, `coach_business_name`, or the app’s equivalent):
+
+Expected tab order:
+
+```txt
+Coach | Overview | Activity
+```
+
+Default tab:
+
+```txt
+coach
+```
+
+Direct URL without `?tab=`:
+
+```txt
+/UserProfile?id=<coach_id>
+```
+
+should render the Coach tab, not Overview.
+
+### Own coach profile
+
+Expected tab order:
+
+```txt
+Coach | Overview | Activity | Follows | Stats
+```
+
+Menu My Profile for a coach should link to:
+
+```txt
+/UserProfile?id=<canonical_self_id>&tab=coach
+```
+
+### Non-coach profile
+
+Keep current behavior:
+
+```txt
+Overview | Activity | Follows/Stats if self
+```
+
+Default:
+
+```txt
+overview
+```
+
+---
+
+## Part B — Coach tab layout as a card
+
+The Coach tab should be the public coach card.
+
+Desktop target:
+
+```txt
+max-w-6xl or max-w-7xl
+main column: bio, specialties, certifications, services
+side column: experience, languages, training mode, location, price, accepting clients, CTA
+```
+
+Must include:
+
+- Coach name / alias.
+- COACH badge.
+- Headline.
+- Location.
+- Training mode: online / in-person / hybrid.
+- Bio.
+- Specialties.
+- Experience.
+- Languages if available.
+- Price from / session price if available.
+- Accepting clients indicator.
+- Follow / Message / Share for public viewer.
+- Edit profile / Manage services / Preview public profile / Copy link for self.
+- Public service offers embedded on the Coach tab.
+
+Avoid:
+
+- A narrow `max-w-2xl` card with empty right half.
+- Duplicating the whole Coach tab inside Overview.
+- Hiding coach info behind Overview.
+
+---
+
+## Part C — Services Archive/Delete
+
+Current issue:
+
+```txt
+manageCoachServiceTier=true
+archiveOfferLabel=false
+archivedVisibilityInUI=false
+```
+
+Service offer cards must include a soft delete/archive flow.
+
+### Required UI
+
+Each active offer card:
+
+```txt
+Edit | View on profile | Copy link | ... menu
+                                   -> Archive offer
+```
+
+Archive behavior:
+
+```js
+manageCoachServiceTier({
+  action: 'set_visibility',
+  visibility: 'archived',
+  tier_id
+})
+```
+
+Expected:
+
+- Toast: `Offer archived`.
+- Offer disappears from active “Your offers”.
+- Archived section appears:
+
+```txt
+Archived offers (N)
+Restore
+```
+
+Restore:
+
+```js
+visibility: 'public' // or previous visibility if tracked
+```
+
+Hard delete:
+- Optional.
+- Only for draft or archived offers.
+- Must require confirmation.
+
+---
+
+## Part D — Services layout
+
+Desktop:
+
+```txt
+container: max-w-6xl or max-w-7xl
+offer grid: grid-cols-1 md:grid-cols-2 xl:grid-cols-3
+```
+
+The page should not be a single narrow column on desktop.
+
+Header:
+
+```txt
+Services                              + Create coaching offer
+Services | Requests | Clients
+```
+
+Keep sub-tabs stable and visible.
+
+---
+
+## Part E — Focused layout audit (exclude Home/Training)
+
+Audit these only after A/B/C:
+
+- `/Community`
+- `/CoachBusinessHub`
+- `/CoachServices`
+- `/UserProfile`
+- `/CoachDirectory`
+- `/Settings`
+- `/CreateCoachProfile`
+- `/MyFollows`
+- `/Messages`
+- `/Teams`
+
+Rules:
+
+- Dashboard/list pages should use at least ~60% desktop width.
+- Forms may use `max-w-4xl/5xl`, but should not feel like a tiny mobile column.
+- Keep existing visual system; do not redesign everything.
+- Fix obvious `max-w-[680px]` / `max-w-2xl` misuse where it creates empty desktop space.
+
+Community specifically:
+- Feed `max-w-[680px]` is too narrow if right rail remains.
+- Either make the overall shell intentional or widen the feed/content balance.
+- Do not reintroduce multiple “create post” CTAs.
+
+---
+
+## Required retest
+
+```bash
+node scripts/ui-audit-prod.mjs
+TEST_PRO_EMAIL=... node scripts/ui-audit-logged-in.mjs
+TEST_PRO_EMAIL=... node scripts/coach-create-probe.mjs
+```
+
+Manual/visual:
+
+1. Public coach profile opens on Coach tab.
+2. Own coach profile opens on Coach tab.
+3. Services active offers show Archive.
+4. Archived offers can restore.
+5. Screenshots before/after for UserProfile, CoachServices, Community.
+
+---
+
+## Stop conditions
+
+Stop and report if:
+
+- Canonical profile is still wrong.
+- Coach save still fails.
+- Services backend does not support archive/visibility and no safe fallback exists.
+- You need to invent a separate coach account or mode.
+
+---
+
+## Final report required
+
+Return:
+
+1. UserProfile tab order before/after.
+2. Services archive flow with network/API details.
+3. Layout changes by route.
+4. Screenshots before/after.
+5. Files changed.
+6. Remaining issues not fixed.

@@ -1,0 +1,146 @@
+---
+description: Airon Coach architecture, QA, and prompt-writing assumptions
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Airon Coach architecture and prompt rules
+
+Use these assumptions when writing prompts, reviewing changes, or planning fixes for
+Airon Coach. These rules reflect the current product direction and the behavior verified
+through production E2E checks.
+
+## Product model
+
+- Airon Coach uses one unified account model.
+- There is one mailbox/conversation system.
+- There is one Community identity.
+- There is one team system.
+- Do not reintroduce Athlete view, Coach view, Athlete mode, Coach mode, Profile mode,
+  Switch profile, or Switch to coach.
+- Coach is an optional public/professional capability on the same account.
+- Trainee replaces Athlete in user-facing language, but there must be no Trainee mode,
+  Trainee view, or profile switcher.
+- Any normal user can create, own, and manage a team.
+- Team owner/admin permissions must be based on Team/TeamMember role, not coach status
+  or mode.
+- Coach public profile should stay lightweight: public coach alias/name, public profile
+  content, and public visibility controls.
+
+## User-facing language
+
+- Avoid user-facing "Athlete" copy unless verifying old copy still exists.
+- Prefer "Trainee" only where a person being trained is meant.
+- Prefer neutral "Profile", "Account", "Community profile", or "Training profile" when
+  the context is not specifically coach-trainee.
+- Do not create or mention "Trainee mode" or "Trainee view".
+- "Coach Profile" is allowed when it means the optional public professional profile.
+- "Coach Chat" can remain if it refers to the AI coach chat feature, not a profile mode.
+
+## Community behavior
+
+- /Community must not black-screen.
+- Community sections should fail independently:
+  - Feed
+  - Teams
+  - Messages
+  - People/Discover
+  - Discovery rail / suggested coaches
+- If one section fails, render a compact fallback and keep other sections available.
+- Use this fallback copy when needed:
+  - "Community could not load this section."
+  - "Other Community sections are still available."
+  - "Retry"
+- Do not delete Community sections to hide a bug.
+- Do not hide Community, Messages, or Teams behind coach capability.
+
+## Defensive data handling
+
+- Normalize API results before using `.slice`, `.map`, `.filter`, `.reduce`, or `.length`.
+- Do not assume `response.data` is an array.
+- For list responses, safely support common shapes:
+  - `response.data` as an array
+  - `response.data.items`
+  - `response.data.results`
+  - `response.data.coaches`
+  - `response.data.messages`
+  - `response.data.teams`
+- If data is unavailable, render a polished empty state or compact error state.
+- Avoid repeated console spam for expected optional/missing data paths.
+- Missing optional functions should be handled gracefully or replaced with the current
+  supported data access pattern.
+
+## Verified production observations from latest checks
+
+These observations should guide prompts, but every new task should still re-check current
+behavior before assuming a bug is present.
+
+- Anonymous landing/pricing smoke test passed.
+- Logged-in routes loaded without full black screens:
+  - /Community
+  - /Community?tab=teams
+  - /Community?tab=messages
+  - /Community?tab=people
+  - /Messages
+  - /Teams
+  - /Settings
+  - /CoachDirectory
+- /Community has been seen both rendering and showing a section fallback. Reproduce before
+  changing code.
+- A previously reproduced Community runtime error was:
+  - `TypeError: a.slice is not a function`
+  - in the minified Feed Discovery Rail / suggested coaches area.
+- Reproduced API 404s included:
+  - `getMyFollows`
+  - `getSuggestedCoaches`
+  - `getMyMessages`
+  - `checkIsFollowing`
+  - `getTeamMessages`
+  - `getTeamUnreadCounts`
+  - `getReactionsForMessages`
+- /Settings still showed user-facing "Athlete Profile" during checks. Prefer changing that
+  to "Trainee Profile" or neutral "Profile" if still present.
+
+## Prompt-writing rules
+
+### Base44 prompts (paste into connected app builder)
+
+Base44 is already wired to this app and knows its own codebase. Prompts for Base44 must be:
+
+- **Outcome-only:** what is broken in the UI/API and what the user should see instead.
+- **No implementation map:** do not name files, components, hooks, or minified bundle symbols.
+- **No “deploy function X”** unless describing a user-visible missing feature by symptom.
+- **Short:** Opus in Base44 can infer how to fix; avoid runbooks inside the prompt.
+- **Product constraints only:** unified account, coach = capability, Trainee not Athlete, no mode switcher.
+- End with: what to verify in the UI — not a list of changed files.
+
+Good: “`/Settings?tab=coach` should open the coach settings panel on cold load.”
+Bad: “Change `SettingsPage.tsx` and add `useSearchParams` for tab=coach.”
+
+When preparing prompts for the human operator, also in chat (not in the Base44 paste):
+- Propose concrete UI patterns (icons, layout, flows).
+- Ask clarifying product questions instead of leaving decisions to the user.
+- After each paste file, summarize what changed in that prompt.
+
+### E2E repo / agent prompts (this repository)
+
+- Start with prod verification when unsure something is still broken.
+- Targeted fixes only; no broad redesigns.
+- Agent final reports may include files changed and scripts run — that is for this repo only, not Base44 paste text.
+
+## Routes to verify for Community/account work
+
+For logged-in QA, verify these routes or tabs when relevant:
+
+- /Community
+- /Community?tab=teams
+- /Community?tab=messages
+- /Community?tab=people
+- /Messages
+- /Teams
+- /Settings
+- /CoachDirectory
+
+Wait at least 5 seconds after route or tab navigation before judging whether the route is
+stable.

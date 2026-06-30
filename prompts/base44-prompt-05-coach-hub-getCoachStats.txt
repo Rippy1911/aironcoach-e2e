@@ -1,0 +1,151 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## P0 BUG — Coach Hub pokazuje „You're not a coach yet" po utworzeniu profilu coacha
+
+> **Current blocker (2026-06-25):** do not start this before prompt 07 passes.
+> On current prod test accounts, coach profile creation fails first because canonical
+> UserProfile resolves to `mkpiwecki` and save returns 403. After prompt 07 is fixed,
+> rerun `scripts/coach-create-probe.mjs`; only then verify `getCoachStats`.
+
+### Odtworzenie (potwierdzone na prod przez użytkownika + analiza kodu)
+
+1. Użytkownik tworzy profil coacha (Create coach profile) → Save
+2. Toast: **„Coach profile created"** ✅
+3. Redirect do `/CoachBusinessHub` ✅
+4. Sidebar pokazuje badge **COACH** ✅ (profil zapisany: `is_coach: true`, `coach_status: approved`)
+5. Coach Hub main content pokazuje: **„You're not a coach yet"** + CTA do Settings ❌
+
+### Root cause (P0 — napraw natychmiast)
+
+**`getCoachStats` endpoint nie istnieje / nie jest wdrożony na prod.**
+
+Test anonimowy:
+```
+POST https://airon.coach/functions/getCoachStats
+→ "Deployment does not exist. Try redeploying the function from the code editor section."
+```
+
+To **ten sam bug** co wcześniej `redeemReferralCode` / `ensureReferralCode` — martwy deployment (prawdopodobnie import `../_lib/withRetry.js` lub inny lokalny import w backend function).
+
+### Logika frontendu (dlaczego UI kłamie)
+
+`CoachBusinessHub` (`KDe` component) ma **dwa gate'i**:
+
+**Gate 1** — profil coacha istnieje?
+```js
+o = mRe(profile) = Vy(profile) = !!coach_business_name
+```
+Jeśli `!o` → „Create a coach profile first" + link `/CreateCoachProfile`
+
+**Gate 2** — stats z backendu
+```js
+getCoachStats() → data
+if (error || !data || data.error) → pokazuje „You're not a coach yet"
+```
+**To jest błąd UX:** API failure (404 deploy) jest traktowany jak „user nie jest coachem".
+
+Użytkownik przechodzi Gate 1 (ma coach_business_name po save), ale Gate 2 pada na 404 → mylący empty state.
+
+---
+
+## FIX A — Backend (P0)
+
+1. Znajdź `functions/getCoachStats.js` (lub podobna nazwa)
+2. Sprawdź czy importuje `../_lib/withRetry.js` lub inne lokalne importy
+3. **Inline withRetry** (jak fix redeemReferralCode) — backend functions nie mogą mieć lokalnych importów
+4. Deploy i zweryfikuj:
+   ```
+   POST /functions/getCoachStats (authenticated coach user)
+   → 200 z { tier, rank_in_directory, followers, ... }
+   NIE 404 "Deployment does not exist"
+   ```
+
+Jeśli funkcja nie istnieje wcale — **stwórz minimalną** zwracającą dane z UserProfile coacha (tier, completeness) bez over-engineeringu.
+
+---
+
+## FIX B — Frontend CoachBusinessHub (P0 UX)
+
+Nie pokazuj „You're not a coach yet" gdy API failuje.
+
+Rozdziel stany:
+
+| Stan | Warunek | UI |
+|------|---------|-----|
+| Brak profilu coacha | `!Vy(profile)` (brak coach_business_name) | „Create a coach profile first" → `/CreateCoachProfile` |
+| Profil coach OK, stats loading | `Vy(profile) && loading` | Spinner |
+| Profil coach OK, stats OK | `Vy(profile) && data` | Dashboard |
+| Profil coach OK, **API error** | `Vy(profile) && error` | **„Couldn't load coach dashboard"** + Retry button — NIE „not a coach" |
+| Profil odrzucony/zawieszony | `coach_status rejected/suspended/banned` | Odpowiedni komunikat |
+
+```js
+// ZŁE (obecne):
+if (error || !data || data.error) showNotCoachEmptyState();
+
+// DOBRE:
+if (!Vy(profile)) showCreateProfileCTA();
+else if (loading) showSpinner();
+else if (error || !data) showApiErrorWithRetry();  // NIE „not a coach"
+else showDashboard(data);
+```
+
+---
+
+## FIX C — Po zapisie profilu coacha (cache + redirect)
+
+W `CreateCoachProfileForm` / `CreateCoachProfile` page po successful save:
+
+1. `invalidateQueries(['myProfile'])`
+2. `invalidateQueries(['coachStats'])`
+3. **Poczekaj** na refetch myProfile (żeby Coach Hub miał świeże dane)
+4. Dopiero potem `navigate('/CoachBusinessHub')`
+
+Obecnie: toast + redirect natychmiast, Coach Hub mountuje się ze starym cache i woła martwy getCoachStats.
+
+---
+
+## FIX D — Sidebar double-active (bonus)
+
+Screenshot: **Home i Coach Hub** oba podświetlone na raz.
+
+Sprawdź logikę `isActive` w sidebar nav — tylko jeden item active per route. `/CoachBusinessHub` nie powinien też highlightować Home.
+
+---
+
+## Pliki (orientacyjnie)
+
+- `functions/getCoachStats.js` — deploy fix (P0)
+- `pages/CoachBusinessHub.jsx` (lub `HDe`/`KDe`) — rozdziel error vs not-coach
+- `CreateCoachProfile` page + form — cache invalidation przed redirect
+- `lib/coachProfile.js` — `Vy`, `mRe`, `fse` helpers (tylko jeśli trzeba doprecyzować gate)
+- Sidebar nav — active state fix
+
+---
+
+## Test obowiązkowy (logged-in coach account)
+
+1. Konto bez profilu coacha → Coach Hub → „Create a coach profile first" (Gate 1)
+2. Utwórz profil coacha → Save
+3. Redirect Coach Hub → **dashboard się ładuje** (NIE „not a coach")
+4. Network tab: `getCoachStats` → **200**
+5. Odśwież stronę na `/CoachBusinessHub` → nadal dashboard
+6. Symuluj API down (mock) → komunikat błędu + Retry, NIE „not a coach"
+
+---
+
+## Czego NIE robić
+
+- Nie wprowadzaj coach mode / profile switcher
+- Nie pokazuj „not a coach" przy API 404/500
+- Nie duplikuj logiki capability — używaj `is_coach` + `coach_business_name` + `coach_status` spójnie
+- Nie zmieniaj flow unified account
+
+---
+
+## Raport końcowy
+
+1. Root cause getCoachStats (deploy/import?)
+2. Przed/po: screenshot Coach Hub po create profile
+3. Network: status getCoachStats
+4. Pliki zmienione
+5. Test checklist ✅/❌

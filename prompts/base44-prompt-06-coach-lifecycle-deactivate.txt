@@ -1,0 +1,413 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## Cel
+
+Zaimplementuj pełny lifecycle profilu coacha na **jednym koncie użytkownika**:
+- Aktywacja (już istnieje — Create coach profile)
+- **Pauza** (soft)
+- **Dezaktywacja capability** (średnia — „przestań być trenerem", bez kasowania konta)
+- **Ponowna aktywacja** (re-enable z zachowanych danych)
+- **Usunięcie danych coacha** (twarda opcja, rzadka)
+
+**NIE** wprowadzaj profile mode / coach mode / switch to user account. Użytkownik **zawsze** ma jedno konto — zmienia tylko **capability coach**.
+
+Najpierw zweryfikuj na prod (https://airon.coach). Nie psuj istniejących flow.
+
+---
+
+## Model produktowy (obowiązkowy)
+
+### Jedno konto, dwie warstwy
+
+```
+┌─────────────────────────────────────────┐
+│  KONTO UŻYTKOWNIKA (zawsze aktywne)     │
+│  - trening, streak, Community, Teams    │
+│  - billing, settings, mailbox           │
+│  - profil osobisty / trainee            │
+├─────────────────────────────────────────┤
+│  WARSTWA COACH (opcjonalna capability)  │
+│  - coach_business_name, bio, usługi     │
+│  - Coach Hub, Marketing, Services       │
+│  - katalog coachów, accepting clients   │
+└─────────────────────────────────────────┘
+```
+
+### Copy — czego NIE pisać
+
+| Źle | Dobrze |
+|-----|--------|
+| Switch to user account | Deactivate coach profile |
+| Coach mode / User mode | Coach capability on/off |
+| Return to athlete/trainee mode | Your personal account stays active |
+| Delete account | Remove coach public profile (jeśli to nie jest account deletion) |
+
+---
+
+# CZĘŚĆ A — Trzy poziomy kontroli coach capability
+
+## Poziom 1 — PAUZA (soft, już częściowo w modelu)
+
+**Cel:** Coach nadal ma capability, ale jest niewidoczny / nie przyjmuje klientów.
+
+### Pola (UserProfile — reuse istniejących)
+- `accepting_clients` (boolean) — default true gdy coach aktywny
+- `coach_profile_visibility` — `"public"` | `"private"`
+
+### UI — Settings → Coach Profile → sekcja „Availability"
+
+```
+┌─────────────────────────────────────────────────┐
+│ Availability                                     │
+├─────────────────────────────────────────────────┤
+│ [toggle] Accepting new clients                   │
+│          Clients can request coaching via your   │
+│          public profile and directory listing.   │
+│                                                  │
+│ [toggle] Show in coach directory                 │
+│          Your coach profile appears in search.   │
+│          When off, only people with your link    │
+│          can find you.                           │
+└─────────────────────────────────────────────────┘
+```
+
+### Zachowanie
+- `accepting_clients: false` → ukryj CTA „Book" / „Request coaching", badge „Not accepting clients" na profilu publicznym
+- `coach_profile_visibility: private` → wyklucz z `getCoachDirectory` / search, zachowaj direct link do profilu
+- Coach Hub, sidebar Marketing/Services — **nadal widoczne**
+- `is_coach` — **bez zmian** (true)
+
+---
+
+## Poziom 2 — DEZAKTYWACJA CAPABILITY (główna nowa funkcja)
+
+**Cel:** Użytkownik przestaje być coachem w produkcie, ale **konto osobiste działa normalnie**. Dane coacha zachowane do ewentualnego powrotu.
+
+### Pola (UserProfile)
+
+Dodaj / użyj spójnie:
+- `is_coach` (boolean) — **false** po dezaktywacji
+- `coach_status` — wartość `"inactive"` (nowy status; obecne: approved, rejected, suspended, banned, none)
+- `coach_deactivated_at` (datetime, optional) — kiedy wyłączył
+- `coach_reactivation_available` (boolean, default true) — czy może włączyć ponownie bez supportu
+
+**NIE kasuj** przy dezaktywacji:
+- `coach_business_name`, `coach_bio`, `specialties`, `certifications`, `price_per_session`, `coach_avatar_url`, historia klientów, usługi (oznacz jako inactive)
+
+### UI — Settings → Coach Profile → sekcja „Coach status" (na dole, danger zone)
+
+```
+┌─────────────────────────────────────────────────┐
+│ Coach profile status                             │
+│ Your personal account, training, and Community   │
+│ stay active. Only your coach tools are paused.   │
+├─────────────────────────────────────────────────┤
+│ Status: ● Active coach                           │
+│                                                  │
+│ [button outline] Pause coach profile             │
+│   → opens modal Poziom 1 (quick toggles)         │
+│                                                  │
+│ [button destructive] Deactivate coach profile    │
+│   → modal potwierdzenia (Poziom 2)               │
+└─────────────────────────────────────────────────┘
+```
+
+### Modal dezaktywacji (Poziom 2)
+
+Tytuł: **Deactivate coach profile?**
+
+Body:
+```
+Your personal account stays active. You will keep:
+• Training log, streak, and workouts
+• Community, teams, and messages
+• Billing and subscription
+
+Coach features will be hidden:
+• Coach Hub, Marketing, Services (sidebar)
+• Public listing in coach directory
+• New client requests
+
+Your coach data is saved — you can reactivate anytime from Settings.
+```
+
+Przyciski:
+- Cancel
+- **Deactivate coach profile** (destructive)
+
+Po confirm:
+1. Update UserProfile: `is_coach: false`, `coach_status: "inactive"`, `coach_deactivated_at: now`, `accepting_clients: false`, `coach_profile_visibility: "private"`
+2. Invalidate `myProfile`, `coachStats`, nav capability cache
+3. Toast: „Coach profile deactivated. Your personal account is unchanged."
+4. Redirect → `/Home` (NIE logout, NIE onboarding)
+
+### Nawigacja po dezaktywacji
+
+Ukryj z sidebara (capability-gated):
+- Coach Hub
+- Marketing (jeśli coach-only)
+- Services (jeśli coach-only)
+- Trainees (jeśli coach-only workspace — sprawdź obecną logikę; jeśli trainee list jest coach feature, ukryj)
+
+**Zostaw widoczne:**
+- Home, Training, Coach Chat (AI), Community, Settings
+- Badge COACH w menu — **usuń** gdy `is_coach: false`
+
+### Coach Hub /CreateCoachProfile po dezaktywacji
+
+- `/CoachBusinessHub` → redirect do Settings Coach Profile z bannerem „Coach profile is inactive" + CTA **Reactivate coach profile**
+- `/CreateCoachProfile` — jeśli `coach_status: inactive` i dane istnieją → **Reactivate** flow (pre-fill form), nie blank create
+
+---
+
+## Poziom 3 — USUNIĘCIE DANYCH COACHA (hard, rzadkie)
+
+**Cel:** Trwałe usunięcie publicznej warstwy coacha. Tylko dla użytkowników którzy już zdezaktywowali (Poziom 2) LUB po double-confirm.
+
+### UI — Settings → Coach Profile → Danger zone (tylko gdy inactive)
+
+```
+┌─────────────────────────────────────────────────┐
+│ Danger zone                                      │
+│ Permanently remove your public coach profile     │
+│ and directory listing. Client history may be     │
+│ retained for compliance.                         │
+│                                                  │
+│ [button destructive] Delete coach profile data   │
+└─────────────────────────────────────────────────┘
+```
+
+### Modal (double confirm)
+
+1. „Type DELETE to confirm"
+2. Wyjaśnij co znika: bio, business name, directory, services listing
+3. Co zostaje: account, workouts, Community identity, billing
+
+### Backend
+- Wyczyść pola coach public: `coach_business_name`, `coach_bio`, `specialties`, `certifications`, `coach_avatar_url`, `coach_city`, `price_per_session`, etc.
+- `coach_status: "none"`, `is_coach: false`, `coach_onboarding_completed: false`
+- **NIE** usuwaj User entity, **NIE** usuwaj WorkoutLog / Community posts / Team membership
+- Relacje coach-client: oznacz archived (jeśli entity istnieje) — nie orphanuj bez polityki
+
+---
+
+# CZĘŚĆ B — Ponowna aktywacja (Reactivate)
+
+## Flow
+
+Settings → Coach Profile (gdy `coach_status: inactive`):
+
+```
+┌─────────────────────────────────────────────────┐
+│ Coach profile inactive                           │
+│ Your coach data is saved. Reactivate to restore  │
+│ Coach Hub and your public listing.               │
+│                                                  │
+│ [button primary] Reactivate coach profile        │
+└─────────────────────────────────────────────────┘
+```
+
+Klik **Reactivate**:
+1. `is_coach: true`, `coach_status: "approved"` (lub poprzedni status jeśli był suspended — wtedy wymaga review)
+2. Przywróć `accepting_clients` i `coach_profile_visibility` do ostatnich wartości (zapisz snapshot przy dezaktywacji: `coach_settings_snapshot` JSON optional)
+3. Invalidate queries
+4. Toast: „Coach profile reactivated"
+5. Navigate → `/CoachBusinessHub`
+
+Jeśli dane coacha puste (po Poziomie 3 delete) → redirect `/CreateCoachProfile` (fresh setup)
+
+---
+
+# CZĘŚĆ C — Spójność capability w całej aplikacji
+
+## Jedna funkcja prawdy (frontend)
+
+```js
+// lib/coachCapability.js
+export function hasCoachCapability(profile) {
+  if (!profile) return false;
+  if (profile.is_coach !== true) return false;
+  const blocked = ['rejected', 'suspended', 'banned'];
+  if (blocked.includes(profile.coach_status)) return false;
+  // inactive = no capability (Poziom 2)
+  if (profile.coach_status === 'inactive') return false;
+  return true;
+}
+
+export function hasCoachProfileData(profile) {
+  // ma zapisane dane coacha (do reactivate) nawet gdy inactive
+  return !!(profile?.coach_business_name?.trim() || profile?.coach_onboarding_completed);
+}
+
+export function isCoachPubliclyVisible(profile) {
+  return hasCoachCapability(profile)
+    && profile.coach_profile_visibility === 'public'
+    && profile.coach_status === 'approved';
+}
+```
+
+**Użyj wszędzie** zamiast rozproszonych `is_coach === true` / `Vy(profile)` checks:
+- Sidebar nav items
+- Coach Hub gate
+- Menu badge COACH
+- Marketing / Services routes
+- Community „Posting as Coach"
+
+## Route guards
+
+| Route | Gdy inactive / !capability |
+|-------|---------------------------|
+| /CoachBusinessHub | Redirect Settings#coach + banner LUB reactivate CTA |
+| /CoachServices | j.w. |
+| /Marketing* | j.w. |
+| /CreateCoachProfile | Reactivate flow jeśli dane istnieją |
+
+---
+
+# CZĘŚĆ D — Backend
+
+## Entity UserProfile
+
+Dodaj pola (jeśli brak):
+- `coach_status` — rozszerz enum o `"inactive"`
+- `coach_deactivated_at` (datetime, optional)
+- `coach_settings_snapshot` (json, optional) — `{ accepting_clients, coach_profile_visibility }` przed dezaktywacją
+
+## Function: deactivateCoachProfile (nowa)
+
+```
+POST /functions/deactivateCoachProfile
+Auth: required
+Body: { confirm: true }
+
+Actions:
+- Set is_coach: false, coach_status: inactive, coach_deactivated_at: now
+- Snapshot settings
+- accepting_clients: false, coach_profile_visibility: private
+- Return updated profile
+
+NO local imports — inline withRetry if needed
+```
+
+## Function: reactivateCoachProfile (nowa)
+
+```
+POST /functions/reactivateCoachProfile
+Auth: required
+
+- Require coach_reactivation_available !== false
+- Require coach_business_name OR coach_onboarding_completed (dane istnieją)
+- Restore is_coach: true, coach_status: approved
+- Restore snapshot settings if present
+- Return updated profile
+```
+
+## Function: deleteCoachProfileData (nowa, optional Poziom 3)
+
+```
+POST /functions/deleteCoachProfileData
+Auth: required
+Body: { confirm_token: "DELETE" }
+
+- Clear coach public fields
+- coach_status: none, is_coach: false
+- Do NOT delete user account
+```
+
+## getCoachDirectory / getUserProfile
+
+- Directory: exclude `coach_status: inactive`, `is_coach: false`, `coach_profile_visibility: private`
+- getUserProfile: self widzi inactive status + reactivate CTA data; obcy nie widzą inactive coachów
+
+---
+
+# CZĘŚĆ E — Coach Hub error state (jeśli jeszcze nie naprawione)
+
+Jeśli `getCoachStats` nadal 404 — napraw deploy (prompt 05).  
+**Nigdy** nie pokazuj „You're not a coach yet" gdy:
+- `hasCoachCapability(profile) === true` ale API fail
+- Pokaż: „Couldn't load coach dashboard" + Retry
+
+Gate Coach Hub:
+```
+if (!hasCoachProfileData(profile)) → Create coach profile CTA
+else if (!hasCoachCapability(profile)) → Inactive banner + Reactivate (Poziom 2)
+else if (statsError) → API error + Retry
+else → Dashboard
+```
+
+---
+
+# CZĘŚĆ F — Profile Hub tab „Coach" (jeśli Profile Hub istnieje lub budujesz)
+
+Na własnym profilu tab **Coach**:
+- Gdy active: bio, services, link Coach Hub, Edit w Settings
+- Gdy inactive: „Coach profile inactive" + Reactivate button
+- Gdy brak profilu: „Set up coach profile" → CreateCoachProfile
+
+**Nie** buduj osobnego „user profile" vs „coach profile" — jeden Profile Hub, tab Coach = warstwa capability.
+
+---
+
+# Czego NIE robić
+
+- Nie profile switcher / coach mode / athlete mode / trainee mode
+- Nie „return to user account" — konto jest jedno
+- Nie logout przy dezaktywacji
+- Nie kasuj User entity przy deactivate
+- Nie chowaj Community/Messages/Teams
+- Nie usuwaj historii treningów przy deactivate/delete coach data
+- Nie lokalnych importów w backend functions
+
+---
+
+# Pliki (orientacyjnie)
+
+- `entities/UserProfile` — pola inactive, deactivated_at, snapshot
+- `functions/deactivateCoachProfile.js` (new)
+- `functions/reactivateCoachProfile.js` (new)
+- `functions/deleteCoachProfileData.js` (new, Poziom 3)
+- `lib/coachCapability.js` (new) — hasCoachCapability, hasCoachProfileData
+- Settings → Coach Profile tab — Availability + Status + Danger zone
+- `CreateCoachProfile` — reactivate vs create
+- `CoachBusinessHub` — gates per Część E
+- Sidebar nav — capability gating
+- `ProfileModeMenu` — ukryj COACH badge gdy !capability
+
+---
+
+# Testy obowiązkowe (logged-in)
+
+## Poziom 1
+- [ ] Wyłącz accepting_clients → brak book CTA na profilu publicznym
+- [ ] Ukryj directory → nie widać w search, widać direct link
+
+## Poziom 2
+- [ ] Active coach → Deactivate → toast, redirect Home
+- [ ] Sidebar: brak Coach Hub, Marketing, Services; jest Training, Community
+- [ ] Menu: brak badge COACH
+- [ ] /CoachBusinessHub → redirect/banner inactive
+- [ ] Trening i Community działają normalnie
+
+## Reactivate
+- [ ] Settings → Reactivate → Coach Hub działa, dane coacha przywrócone
+- [ ] accepting_clients / visibility przywrócone ze snapshot
+
+## Poziom 3
+- [ ] Po inactive → Delete coach data → pola wyczyszczone
+- [ ] Reactivate prowadzi do CreateCoachProfile (fresh)
+
+## Regression
+- [ ] User który nigdy nie był coachem — nie widzi Danger zone deactivate
+- [ ] getCoachDirectory nie pokazuje inactive coachów
+
+---
+
+# Raport końcowy
+
+1. Model 3 poziomów — co zaimplementowano
+2. Pola UserProfile + nowe functions
+3. hasCoachCapability — gdzie podpięte
+4. Screenshoty: Settings Availability, Deactivate modal, inactive state, Reactivate, sidebar before/after
+5. Test checklist ✅/❌
+6. Follow-ups (np. admin review po reactivate ze suspended)

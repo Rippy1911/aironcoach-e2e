@@ -1,0 +1,325 @@
+Follow the established unified-account architecture and capability-based coach UI.
+
+## Cel
+
+Przebudowa UX/UI coach-facing ekranów + pełny audyt layoutu (poza Home i Training).
+
+> **Prerequisite:** prompt 07 must be fixed first. Current prod (2026-06-25)
+> cannot create a coach profile on test accounts because the app updates the
+> wrong UserProfile (`mkpiwecki`) and gets 403. Verify `node scripts/coach-create-probe.mjs`
+> is green before implementing Services/Hub self-coach flows.
+
+**Zgłoszenia użytkownika (screenshots prod):**
+1. Profil coacha — tab **Coach** jest ostatni (po Overview/Activity). Dla coacha to ma być **wizytówka = pierwszy tab, domyślny**.
+2. Services — brak przycisku **Usuń** na ofertach (tylko Edit).
+3. Ogólnie — ekrany nie wykorzystują przestrzeni (wązka kolumna, ogromna pusta przestrzeń po prawej). Absurd.
+
+**Scope audytu:** wszystkie główne strony **OPRÓCZ** Home i Training.
+
+Najpierw zweryfikuj na prod (https://airon.coach). Screenshoty before/after obowiązkowe.
+
+---
+
+# CZĘŚĆ A — Profil coacha = wizytówka (P0)
+
+## Problem (potwierdzone w kodzie)
+
+`/UserProfile?id=...` buduje taby w kolejności:
+```
+Overview → Activity → [Follows, Stats jeśli self] → Coach (ostatni!)
+```
+Default tab: `overview` — nawet gdy `is_public_coach === true`.
+
+Dla publicznego profilu coacha user widzi najpierw pusty Overview, dopiero trzeci tab to Coach z bio/specialties — **to jest zła hierarchia**.
+
+## Docelowe zachowanie
+
+### A1. Profil publiczny coacha (`is_public_coach === true`)
+
+**Kolejność tabów:**
+```
+Coach | Overview | Activity
+```
+(lub Coach | Activity jeśli Overview redundantny — patrz A3)
+
+**Default tab:** `coach` (nie overview)
+- Wejście z Coach Directory / Find Coach / link publiczny → od razu wizytówka
+- URL: `/UserProfile?id=X` bez `?tab=` → `?tab=coach` auto
+
+### A2. Własny profil coacha (`is_self && hasCoachCapability`)
+
+**Kolejność tabów:**
+```
+Coach | Overview | Activity | Follows | Stats
+```
+**Default tab:** `coach` (wizytówka + Edit CTA)
+
+My Profile / menu header → `/UserProfile?id=<self>&tab=coach`
+
+### A3. Profil zwykłego usera (nie coach / nie public)
+
+Bez zmian:
+```
+Overview | Activity | [Follows | Stats jeśli self]
+```
+Default: `overview`
+
+### A4. Tab Coach — layout wizytówki (pełna szerokość)
+
+Obecnie: wąskie kolumny, dużo pustej przestrzeni.
+
+**Docelowy layout desktop:**
+```
+┌────────────────────────────────────────────────────────────┐
+│ [Cover 100% width, max-h 160px]                            │
+│ [Avatar]  Coach Name  COACH badge  Verified  🔥streak      │
+│           Headline · Location · Online · Followers         │
+│           [Follow] [Message] [Share]  lub [Edit] [Share]   │
+├────────────────────────────────────────────────────────────┤
+│ COACH TAB (full width, nie max-w-2xl)                      │
+│ ┌─────────────────────────┬──────────────────────────────┐ │
+│ │ About + Bio             │ Sidebar:                     │ │
+│ │ Specialties             │ • Experience                 │ │
+│ │ Certifications          │ • Training mode              │ │
+│ │ Languages               │ • Price from                 │ │
+│ │                         │ • [Book / Request coaching]  │ │
+│ │ SERVICES (embedded)     │ • Accepting clients badge  │ │
+│ │ lista public offers     │                              │ │
+│ └─────────────────────────┴──────────────────────────────┘ │
+└────────────────────────────────────────────────────────────┘
+```
+
+- **Services na profilu coacha** — pokaż publiczne oferty (z CoachServices) bezpośrednio w tab Coach, nie tylko link „View on profile"
+- Grid **2 kolumny** na desktop (main + sidebar), **1 kolumna** mobile
+- **max-w-5xl lub max-w-6xl** centered — NIE max-w-2xl
+
+### A5. Overview / Activity dla coacha
+
+- **Overview** — skrót (opcjonalnie): streak, quick stats — secondary
+- **Activity** — posty publiczne — secondary
+- Nie duplikuj całego Coach tab w Overview
+
+## Pliki
+- `pages/UserProfile.jsx` — kolejność tabów, default tab logic
+- `components/profile/ProfileCoachTab.jsx` — layout wizytówki
+- Menu My Profile → `&tab=coach` gdy hasCoachCapability
+
+## Acceptance A
+- [ ] Public coach profile: Coach tab pierwszy, default przy wejściu
+- [ ] Own coach profile: My Profile → tab=coach
+- [ ] Coach tab używa pełnej szerokości (screenshot — brak ogromnej pustki po prawej)
+- [ ] Public offers widoczne w tab Coach
+
+---
+
+# CZĘŚĆ B — Services: przycisk Usuń (P0)
+
+## Problem
+
+Strona `/CoachServices` (Services tab): karty ofert mają tylko **Edit**, czasem View on profile / Copy link. **Brak Usuń/Archive.**
+
+Backend ma `manageCoachServiceTier` z `visibility: "archived"` — UI tego nie eksponuje czytelnie.
+
+## Docelowe zachowanie
+
+Na każdej karcie oferty (Services tab):
+```
+[Edit]  [View on profile]  [Copy link]  [··· menu]
+                                        └─ Archive / Delete
+```
+
+### B1. Archive (soft delete) — default
+- Label: **„Archive offer"** (nie kasuj danych, ukryj z profilu)
+- `manageCoachServiceTier({ action: 'set_visibility', visibility: 'archived' })`
+- Toast: „Offer archived"
+- Oferta znika z listy „Your offers" (filtruj `visibility !== 'archived'`)
+- Sekcja collapsible: „Archived offers (N)" z opcją Restore
+
+### B2. Delete (hard) — opcjonalnie w Danger submenu
+- Tylko dla draft / archived
+- Modal: „Permanently delete this offer?" + confirm
+- Backend delete jeśli istnieje, inaczej archived + flag
+
+### B3. Layout Services (pełna szerokość)
+
+Obecnie: wąska kolumna, pusta prawa połowa.
+
+```
+Desktop:
+┌────────────────────────────────────────────────────────────┐
+│ Services                    [+ Create coaching offer]      │
+│ Services | Requests | Clients                              │
+├────────────────────────────────────────────────────────────┤
+│ [Profile public banner — full width]                       │
+├────────────────────────────────────────────────────────────┤
+│ Your offers (3)                                            │
+│ ┌──────────────────┐ ┌──────────────────┐ ┌────────────┐ │
+│ │ Offer card       │ │ Offer card       │ │ Offer card │ │
+│ │ Edit | Archive   │ │ ...              │ │ ...        │ │
+│ └──────────────────┘ └──────────────────┘ └────────────┘ │
+│ grid: 2-3 kolumny na xl, nie 1 wąska kolumna               │
+└────────────────────────────────────────────────────────────┘
+```
+
+- Container: `max-w-6xl` lub `max-w-7xl` mx-auto px-4
+- Grid kart: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
+- Sub-taby (Services/Requests/Clients) — sticky pod headerem
+
+## Pliki
+- Coach Services page + offer card component
+- `manageCoachServiceTier` integration
+
+## Acceptance B
+- [ ] Każda karta ma Archive (i Delete dla draft)
+- [ ] Archived offers sekcja z Restore
+- [ ] Screenshot Services — grid 2-3 kolumny, brak pustej połowy ekranu
+
+---
+
+# CZĘŚĆ C — System layoutu (P1 — wszystkie strony oprócz Home/Training)
+
+## Problem globalny
+
+Wiele stron używa:
+- `max-w-2xl` / `max-w-3xl` — za wąsko na desktop 1920px
+- pojedyncza kolumna wyśrodkowana z 40-60% pustego ekranu
+- inconsistent padding (niektóre py-12, inne pt-4)
+
+## Reguły layoutu (obowiązkowe dla audytu)
+
+| Breakpoint | Content max-width | Grid |
+|------------|-------------------|------|
+| mobile | 100% px-4 | 1 col |
+| md | max-w-4xl | 1-2 col |
+| lg+ | max-w-6xl mx-auto px-6 | 2-3 col gdzie sensowne |
+| xl+ | max-w-7xl | main + sidebar 2/3 + 1/3 |
+
+**Zasada:** jeśli strona ma < 40% wykorzystania szerokości na desktop → przebuduj (sidebar rail, 2-col grid, lub full-width table).
+
+### Wspólny PageShell (stwórz jeśli brak)
+
+```jsx
+<PageShell
+  title="..."
+  subtitle="..."        // opcjonalnie, 1 linia
+  actions={<CTA />}     // prawy górny róg
+  maxWidth="6xl"        // 4xl | 6xl | 7xl | full
+>
+  {children}
+</PageShell>
+```
+
+Użyj na wszystkich audytowanych stronach dla spójności.
+
+---
+
+# CZĘŚĆ D — Audyt UI strona po stronie (P1)
+
+Dla **każdej** strony poniżej: zweryfikuj, napraw layout, zrób screenshot before/after.
+
+**POMIŃ:** Home, Training (wyjątek user request).
+
+| # | Route / obszar | Problemy typowe | Docelowy fix |
+|---|----------------|-----------------|--------------|
+| D1 | `/Community` (+ 4 taby) | header za wysoki, wązka kolumna, rail nisko | max-w-6xl 2-col, header ≤96px (prompt 03/04) |
+| D2 | `/CoachBusinessHub` | empty state / dashboard wąski | full dashboard grid, KPI cards 3-4 col |
+| D3 | `/CoachServices` | brak delete, 1 col | Część B |
+| D4 | `/UserProfile` | Coach tab ostatni, wąsko | Część A |
+| D5 | `/CoachDirectory` / Find Coach | karty w 1 kolumnie | grid 2-3 col, filtry w jednym rzędzie |
+| D6 | `/Settings` (+ taby) | długi scroll, wąskie sekcje | max-w-4xl OK dla forms, ale 2-col gdzie sensowne |
+| D7 | `/Settings` Coach tab | Availability + Status rozrzucone | jeden spójny panel |
+| D8 | Marketing* (coach) | sprawdź width | PageShell 6xl |
+| D9 | Trainees / workspace | lista wąska | table lub 2-col cards full width |
+| D10 | `/MyFollows` / Profile Follows tab | orphan, pusta przestrzeń | w Profile Hub, compact list |
+| D11 | `/Messages` / Community messages | | spójny z Community shell |
+| D12 | `/Teams` | | grid teams 2 col |
+| D13 | `/CreateCoachProfile` | form wąski | 2-col: preview left, form right na lg+ |
+| D14 | Coach Directory → profil coacha | ląduje na Overview | default tab=coach |
+| D15 | Menu popover / sidebar | flyout, chevrons | prompt 04 P0-B |
+
+### D16. Checklist per strona (w raporcie)
+
+Dla każdej strony D1-D15:
+- [ ] Desktop width utilization ≥ 60% (nie pusta połowa)
+- [ ] Spójny padding (px-4/px-6, pt-4)
+- [ ] Primary CTA widoczny bez scrollu (gdzie ma sens)
+- [ ] Screenshot after
+
+---
+
+# CZĘŚĆ E — Coach-facing navigation (P1)
+
+## Problem
+
+Coach musi klikać: Find Coach → profil → tab Coach → Services osobno. Rozproszone.
+
+## Docelowe skróty
+
+| Akcja | Dokąd |
+|-------|-------|
+| My Profile (coach) | `/UserProfile?id=self&tab=coach` |
+| Edit coach profile | `/Settings?tab=coach` lub edit inline na tab Coach |
+| Manage services | `/CoachServices` + link z tab Coach |
+| Public profile preview | button na tab Coach → open public URL |
+
+Na tab Coach (self):
+```
+[Edit profile]  [Manage services]  [Preview public page]  [Copy link]
+```
+
+---
+
+# CZĘŚĆ F — Powiązane bugi (nie psuj, ale uwzględnij)
+
+- Duplicate UserProfile rows (prompt 07) — canonical profile przed zmianami tab
+- getCoachStats 404 (prompt 05) — Coach Hub dashboard
+- Coach lifecycle deactivate (prompt 06)
+
+---
+
+# Czego NIE robić
+
+- Nie profile mode / coach mode switcher
+- Nie osobny „coach account"
+- Nie redesign Home / Training (wyjątek)
+- Nie usuwaj Overview/Activity — tylko **depriorytetyzuj** dla coach (Coach first)
+- Nie Athlete copy — Trainee
+
+---
+
+# Pliki (orientacyjnie)
+
+- `pages/UserProfile.jsx`
+- `components/profile/ProfileCoachTab.jsx`
+- Coach Services page + offer cards
+- `components/layout/PageShell.jsx` (new)
+- `pages/Community.jsx`, `CoachBusinessHub`, `CoachDirectory`, `Settings*`
+- `ProfileModeMenu` — My Profile → tab=coach
+- Marketing, Trainees, Teams pages
+
+---
+
+# Weryfikacja końcowa
+
+## P0
+- [ ] Coach profile: tab Coach pierwszy + default
+- [ ] Services: Archive/Delete na kartach
+- [ ] Coach tab + Services: screenshot pełnej szerokości
+
+## P1 audyt
+- [ ] 15 stron z raportem: before width % → after width %
+- [ ] PageShell użyty spójnie
+- [ ] min. 15 screenshotów after (bez Home/Training)
+
+---
+
+# Raport końcowy
+
+1. Tabela stron D1-D15: route | problem | fix | screenshot
+2. UserProfile tab order before/after
+3. Services delete/archive flow
+4. Layout metrics (przykład: Services 35% → 75% width utilization)
+5. Pliki zmienione
+6. Follow-ups
+
+Kolejność pracy: **A (profil coach) → B (Services delete) → C (PageShell) → D (audyt stron)**.
